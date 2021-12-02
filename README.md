@@ -1,5 +1,8 @@
 # Catlink for HomeAssistant
 
+![image](https://user-images.githubusercontent.com/4549099/144420262-1df2465c-c47e-40bc-952f-1031fdc561ff.png)
+
+
 ## Installing
 
 > [Download](https://github.com/hasscc/catlink/archive/main.zip) and copy `custom_components/catlink` folder to `custom_components` folder in your HomeAssistant config folder
