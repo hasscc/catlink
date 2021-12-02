@@ -1,0 +1,34 @@
+request_api:
+  description: Request API
+  target:
+    entity:
+      integration: catlink
+      domain: sensor
+  fields:
+    api:
+      description: API path
+      example: /token/device/union/list/sorted
+      required: true
+      selector:
+        text:
+    params:
+      description: Request params
+      example: '{"key":"val"}'
+      selector:
+        object:
+    method:
+      description: Request method
+      default: GET
+      example: GET
+      selector:
+        select:
+          options:
+            - GET
+            - POST
+            - POST_GET
+    throw:
+      description: Throw result
+      default: true
+      example: true
+      selector:
+        boolean:
