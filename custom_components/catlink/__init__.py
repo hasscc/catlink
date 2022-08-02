@@ -17,7 +17,9 @@ from homeassistant.helpers.update_coordinator import (
     DataUpdateCoordinator,
 )
 import homeassistant.helpers.config_validation as cv
-from aiohttp.client_exceptions import ClientConnectorError
+
+from asyncio import TimeoutError
+from aiohttp import ClientConnectorError
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import padding
@@ -165,7 +167,7 @@ class Account:
         method = method.upper()
         url = self.api_url(api)
         kws = {
-            'timeout': 20,
+            'timeout': 60,
             'headers': {
                 'language': self.get_config(CONF_LANGUAGE),
                 'User-Agent': 'okhttp/3.10.0',
@@ -188,7 +190,7 @@ class Account:
         try:
             req = await self.http.request(method, url, **kws)
             return await req.json() or {}
-        except ClientConnectorError as exc:
+        except (ClientConnectorError, TimeoutError) as exc:
             _LOGGER.error('Request api failed: %s', [method, url, pms, exc])
         return {}
 
