@@ -7,7 +7,7 @@ import time
 import voluptuous as vol
 
 from homeassistant.core import HomeAssistant
-from homeassistant.const import CONF_TOKEN,CONF_DEVICES,STATE_ON,STATE_OFF,CONF_PASSWORD,CONF_SCAN_INTERVAL
+from homeassistant.const import CONF_TOKEN,CONF_DEVICES,STATE_ON,STATE_OFF,CONF_PASSWORD,CONF_SCAN_INTERVAL,CONF_LANGUAGE
 from homeassistant.components import persistent_notification
 from homeassistant.helpers import aiohttp_client
 from homeassistant.helpers.storage import Store
