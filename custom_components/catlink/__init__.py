@@ -244,7 +244,7 @@ class Account:
         eno = rsp.get('returnCode', 0)
         if eno == 1002:  # Illegal token
             if await self.async_login():
-                rsp = await self.request(api)
+                rsp = await self.request(api, {'type': 'NONE'})
         dls = rsp.get('data', {}).get(CONF_DEVICES) or []
         if not dls:
             _LOGGER.warning('Got devices for %s failed: %s', self.phone, rsp)
