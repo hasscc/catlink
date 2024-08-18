@@ -17,6 +17,7 @@ from homeassistant.helpers.update_coordinator import (
     DataUpdateCoordinator,
 )
 import homeassistant.helpers.config_validation as cv
+from homeassistant.helpers.discovery import async_load_platform
 
 from asyncio import TimeoutError
 from aiohttp import ClientConnectorError
@@ -113,7 +114,7 @@ async def async_setup(hass: HomeAssistant, hass_config: dict):
 
     for platform in SUPPORTED_DOMAINS:
         hass.async_create_task(
-            hass.helpers.discovery.async_load_platform(platform, DOMAIN, {}, config)
+            async_load_platform(hass, platform, DOMAIN, {}, config)
         )
 
     return True
