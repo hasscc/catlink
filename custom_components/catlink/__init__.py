@@ -745,8 +745,8 @@ class LitterBox(Device):
     def knob_status(self) -> bool:
         knob_flab = any(
             "left_knob_abnormal" in e.get("errkey")
-            for e in self.detail.get("deviceErrorList")
-        )
+            for e in self.detail.get("deviceErrorList", [])
+        ) if self.detail else False
         return "Empty Mode" if knob_flab else "Cleaning Mode"
 
     @property
@@ -777,8 +777,8 @@ class LitterBox(Device):
     def garbage_tobe_status(self) -> str:
         full_flag = any(
             "garbage_tobe_full_abnormal" in e.get("errkey")
-            for e in self.detail.get("deviceErrorList")
-        )
+            for e in self.detail.get("deviceErrorList", [])
+        ) if self.detail else False
         return "Full" if full_flag else "Normal"
 
     @property
