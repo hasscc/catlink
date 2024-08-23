@@ -1,32 +1,25 @@
 """Support for binary_sensor."""
-import logging
 
-from homeassistant.core import HomeAssistant
 from homeassistant.components.binary_sensor import (
-    BinarySensorEntity,
     DOMAIN as ENTITY_DOMAIN,
+    BinarySensorEntity,
 )
+from homeassistant.core import HomeAssistant
 
-from . import (
-    DOMAIN,
-    CatlinkBinaryEntity,
-    async_setup_accounts,
-)
+from . import DOMAIN
+from .entitites import CatlinkBinaryEntity
+from .helpers import Helper
 
-_LOGGER = logging.getLogger(__name__)
-
-DATA_KEY = f'{ENTITY_DOMAIN}.{DOMAIN}'
+async_setup_entry = Helper.async_setup_entry
 
 
-async def async_setup_entry(hass, config_entry, async_add_entities):
-    cfg = {**config_entry.data, **config_entry.options}
-    await async_setup_platform(hass, cfg, async_setup_platform, async_add_entities)
-
-
-async def async_setup_platform(hass: HomeAssistant, config, async_add_entities, discovery_info=None):
-    hass.data[DOMAIN]['add_entities'][ENTITY_DOMAIN] = async_add_entities
-    await async_setup_accounts(hass, ENTITY_DOMAIN)
+async def async_setup_platform(
+    hass: HomeAssistant, config, async_add_entities, discovery_info=None
+):
+    """Set up the Catlink binary_sensor platform."""
+    hass.data[DOMAIN]["add_entities"][ENTITY_DOMAIN] = async_add_entities
+    await Helper.async_setup_accounts(hass, ENTITY_DOMAIN)
 
 
 class CatlinkBinarySensorEntity(CatlinkBinaryEntity, BinarySensorEntity):
-    """ BinarySensorEntity """
+    """BinarySensorEntity."""
