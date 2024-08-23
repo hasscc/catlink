@@ -718,8 +718,9 @@ class LitterBox(Device):
 
     @property
     def litter_weight(self):
-        self._litter_weight_during_day.append(float(self.detail.get("catLitterWeight")))
-        print(self._litter_weight_during_day)
+        self._litter_weight_during_day.append(
+            float(self.detail.get("catLitterWeight", 0))
+        )
         return self.detail.get("catLitterWeight")
 
     @property
@@ -728,17 +729,17 @@ class LitterBox(Device):
 
     @property
     def total_clean_time(self):
-        return int(self.detail.get("inductionTimes")) + int(
-            self.detail.get("manualTimes")
+        return int(self.detail.get("inductionTimes", 0)) + int(
+            self.detail.get("manualTimes", 0)
         )
 
     @property
     def manual_clean_time(self):
-        return int(self.detail.get("manualTimes"))
+        return int(self.detail.get("manualTimes", 0))
 
     @property
     def deodorant_countdown(self):
-        return int(self.detail.get("deodorantCountdown"))
+        return int(self.detail.get("deodorantCountdown", 0))
 
     @property
     def knob_status(self) -> bool:
@@ -764,9 +765,13 @@ class LitterBox(Device):
 
     @property
     def last_sync(self) -> str:
-        return datetime.datetime.fromtimestamp(
-            int(self.detail.get("lastHeartBeatTimestamp")) / 1000.0
-        ).strftime("%Y-%m-%d %H:%M:%S")
+        return (
+            datetime.datetime.fromtimestamp(
+                int(self.detail.get("lastHeartBeatTimestamp")) / 1000.0
+            ).strftime("%Y-%m-%d %H:%M:%S")
+            if self.detail.get("lastHeartBeatTimestamp")
+            else None
+        )
 
     @property
     def garbage_tobe_status(self) -> str:
@@ -862,8 +867,8 @@ class LitterBox(Device):
             "alarm_status": self.detail.get("alarmStatus"),
             "weight": self.detail.get("weight"),
             "litter_weight_kg": self.detail.get("catLitterWeight"),
-            "total_clean_times": int(self.detail.get("inductionTimes"))
-            + int(self.detail.get("manualTimes")),
+            "total_clean_times": int(self.detail.get("inductionTimes", 0))
+            + int(self.detail.get("manualTimes", 0)),
             "manual_clean_times": self.detail.get("manualTimes"),
             "key_lock": self.detail.get("keyLock"),
             "safe_time": self.detail.get("safeTime"),
@@ -872,7 +877,9 @@ class LitterBox(Device):
             "litter_countdown": self.detail.get("litterCountdown"),
             "last_sync_time": datetime.datetime.fromtimestamp(
                 int(self.detail.get("lastHeartBeatTimestamp")) / 1000.0
-            ).strftime("%Y-%m-%d %H:%M:%S"),
+            ).strftime("%Y-%m-%d %H:%M:%S")
+            if self.detail.get("lastHeartBeatTimestamp")
+            else None,
             "box_full_sensitivity": self.detail.get("boxFullSensitivity"),
             "quiet_times": self.detail.get("quietTimes"),
         }
