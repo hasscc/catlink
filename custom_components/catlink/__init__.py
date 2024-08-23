@@ -33,6 +33,8 @@ from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import padding
 
+from collections import deque
+
 _LOGGER = logging.getLogger(__name__)
 
 DOMAIN = "catlink"
@@ -500,11 +502,6 @@ class Device:
             "pave_second": self.detail.get("catLitterPaveSecond"),
         }
 
-    def error_attrs(self):
-        return {
-            "weight": self.detail.get("weight"),
-        }
-
     def mode_attrs(self):
         return {
             "work_mode": self.detail.get("workModel"),
@@ -661,6 +658,11 @@ class LitterBox(Device):
     logs: list
     coordinator_logs = None
 
+    def __init__(self, dat: dict, coordinator: DevicesCoordinator):
+        super().__init__(dat, coordinator)
+        self.logs = []
+        self._litter_weight_during_day = deque(maxlen=24)
+
     async def async_init(self):
         await super().async_init()
         self.logs = []
@@ -687,7 +689,13 @@ class LitterBox(Device):
         return {
             "01": "Cleaning",
             "00": "Pause",
-            "03": "Change Garbage Bag",
+        }
+
+    @property
+    def garbage_actions(self) -> dict:
+        return {
+            "00": "Change Bag",
+            "01": "Reset",
         }
 
     @property
@@ -705,17 +713,151 @@ class LitterBox(Device):
         return f"{log.get('time')} {log.get('event')}"
 
     @property
+    def error(self) -> str:
+        return self.detail.get("currentMessage") or "Normal Operation"
+
+    @property
+    def litter_weight(self):
+        self._litter_weight_during_day.append(float(self.detail.get("catLitterWeight")))
+        print(self._litter_weight_during_day)
+        return self.detail.get("catLitterWeight")
+
+    @property
+    def litter_remaining_days(self):
+        return self.detail.get("litterCountdown")
+
+    @property
+    def total_clean_time(self):
+        return int(self.detail.get("inductionTimes")) + int(
+            self.detail.get("manualTimes")
+        )
+
+    @property
+    def manual_clean_time(self):
+        return int(self.detail.get("manualTimes"))
+
+    @property
+    def deodorant_countdown(self):
+        return int(self.detail.get("deodorantCountdown"))
+
+    @property
+    def knob_status(self) -> bool:
+        knob_flab = any(
+            "left_knob_abnormal" in e.get("errkey")
+            for e in self.detail.get("deviceErrorList")
+        )
+        return "Empty Mode" if knob_flab else "Cleaning Mode"
+
+    @property
+    def occupied(self) -> bool:
+        # based on _litter_weight_during_day to determine if the litter box is occupied
+        # check whether value is increasing at any point in the day
+        # Now we can check which cat is using the litter box :)
+        return any(
+            self._litter_weight_during_day[i] < self._litter_weight_during_day[i + 1]
+            for i in range(len(self._litter_weight_during_day) - 1)
+        )
+
+    @property
+    def online(self) -> bool:
+        return self.detail.get("online")
+
+    @property
+    def last_sync(self) -> str:
+        return datetime.datetime.fromtimestamp(
+            int(self.detail.get("lastHeartBeatTimestamp")) / 1000.0
+        ).strftime("%Y-%m-%d %H:%M:%S")
+
+    @property
+    def garbage_tobe_status(self) -> str:
+        full_flag = any(
+            "garbage_tobe_full_abnormal" in e.get("errkey")
+            for e in self.detail.get("deviceErrorList")
+        )
+        return "Full" if full_flag else "Normal"
+
+    @property
     def hass_sensor(self):
         return {
-            **super().hass_sensor,
+            "state": {
+                "icon": "mdi:information",
+                "state_attrs": self.state_attrs,
+            },
+            "error": {
+                "icon": "mdi:alert-circle",
+                "state_attrs": self.error_attrs,
+            },
             "last_log": {
                 "icon": "mdi:message",
-                "state_attrs": self.last_log_attrs,
+            },
+            "garbage_tobe_status": {
+                "icon": "mdi:delete"
+                if self.garbage_tobe_status == "Full"
+                else "mdi:delete-empty",
+            },
+            "litter_weight": {
+                "icon": "mdi:weight",
+                "unit": "kg",
+            },
+            "litter_remaining_days": {
+                "icon": "mdi:calendar",
+                "unit": "days",
+            },
+            "total_clean_time": {
+                "icon": "mdi:history",
+                "unit": "times",
+            },
+            "manual_clean_time": {
+                "icon": "mdi:history",
+                "unit": "times",
+            },
+            "deodorant_countdown": {
+                "icon": "mdi:timer",
+                "unit": "days",
+            },
+            "knob_status": {
+                "icon": "mdi:knob"
+                if self.knob_status.lower() == "empty mode"
+                else "mdi:circle",
+            },
+            "occupied": {
+                "icon": "mdi:paw",
+            },
+            "online": {
+                "icon": "mdi:wifi",
+            },
+            "last_sync": {
+                "icon": "mdi:clock",
             },
         }
 
+    @property
+    def hass_select(self):
+        return {
+            "mode": {
+                "icon": "mdi:menu",
+                "options": list(self.modes.values()),
+                "state_attrs": self.mode_attrs,
+                "async_select": self.select_mode,
+            },
+            "action": {
+                "icon": "mdi:play-box",
+                "options": list(self.actions.values()),
+                "async_select": self.select_action,
+                "delay_update": 5,
+            },
+            "garbage": {
+                "icon": "mdi:trash-can",
+                "options": list(self.garbage_actions.values()),
+                "async_select": self.changeBag,
+                "delay_update": 5,
+            },
+        }
+
+    # Additional Attributes
     def state_attrs(self) -> dict:
         return {
+            "mac": self.mac,
             "work_status": self.detail.get("workStatus"),
             "alarm_status": self.detail.get("alarmStatus"),
             "weight": self.detail.get("weight"),
@@ -734,10 +876,6 @@ class LitterBox(Device):
             "box_full_sensitivity": self.detail.get("boxFullSensitivity"),
             "quiet_times": self.detail.get("quietTimes"),
         }
-
-    @property
-    def garbageStatus(self):
-        return self.detail.get("replaceGarbageBag")
 
     def last_log_attrs(self):
         log = self._last_log
@@ -761,6 +899,12 @@ class LitterBox(Device):
             "status": status,
         }
 
+    def error_attrs(self) -> list:
+        return {
+            "errors": self.detail.get("deviceErrorList"),
+        }
+
+    # Actions
     async def update_logs(self):
         api = "token/litterbox/stats/log/top5"
         pms = {
@@ -845,10 +989,10 @@ class LitterBox(Device):
         _LOGGER.info("Select action: %s", [rdt, pms])
         return rdt
 
-    async def changeBag(self):
+    async def changeBag(self, mode, **kwargs):
         api = "token/litterbox/replaceGarbageBagCmd"
         pms = {
-            "enable": "1" if self.garbageStatus == "00" else "0",
+            "enable": "1" if mode == "Change Bag" else "0",
             "deviceId": self.id,
         }
         rdt = await self.account.request(api, pms, "POST")
