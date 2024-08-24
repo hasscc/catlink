@@ -38,45 +38,67 @@ class Device:
     @property
     def id(self) -> str:
         """Return the device id."""
-        return self.data.get("id")
+        try:
+            return self.data.get("id")
+        except (TypeError, ValueError):
+            return None
 
     @property
     def mac(self) -> str:
         """Return the device mac."""
-        return self.data.get("mac", "")
+        try:
+            return self.data.get("mac")
+        except (TypeError, ValueError):
+            return None
 
     @property
     def model(self) -> str:
         """Return the device model."""
-        return self.data.get("model", "")
+        try:
+            return self.data.get("model")
+        except (TypeError, ValueError):
+            return None
 
     @property
     def type(self) -> str:
         """Return the device type."""
-        return self.data.get("deviceType", "")
+        try:
+            return self.data.get("type")
+        except (TypeError, ValueError):
+            return None
 
     @property
     def name(self) -> str:
         """Return the device name."""
-        return self.data.get("deviceName", "")
+        try:
+            return self.data.get("deviceName", "")
+        except (TypeError, ValueError):
+            return None
 
     @property
     def error(self) -> str:
         """Return the device error."""
-        return self.detail.get("currentMessage") or self.data.get(
-            "currentErrorMessage", ""
-        )
+        try:
+            return self.detail.get("currentMessage") or self.data.get(
+                "currentErrorMessage", ""
+            )
+        except (TypeError, ValueError):
+            return None
 
     @property
     def state(self) -> str:
         """Return the device state."""
-        sta = self.detail.get("workStatus", "")
-        dic = {
-            "00": "idle",
-            "01": "running",
-            "02": "need_reset",
-        }
-        return dic.get(f"{sta}".strip(), sta)
+        try:
+            sta = self.detail.get("workStatus", "")
+            dic = {
+                "00": "idle",
+                "01": "running",
+                "02": "need_reset",
+            }
+            return dic.get(f"{sta}".strip(), sta)
+        except Exception as exc:
+            _LOGGER.error("Get device state failed: %s", exc)
+            return "unknown"
 
     @property
     def mode(self) -> str:
@@ -105,10 +127,6 @@ class Device:
             "state": {
                 "icon": "mdi:information",
                 "state_attrs": self.state_attrs,
-            },
-            "error": {
-                "icon": "mdi:alert-circle",
-                "state_attrs": self.error_attrs,
             },
         }
 

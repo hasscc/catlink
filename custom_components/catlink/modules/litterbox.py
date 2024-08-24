@@ -82,37 +82,61 @@ class LitterBox(Device):
     @property
     def error(self) -> str:
         """Return the error."""
-        return self.detail.get("currentMessage") or "Normal Operation"
+        try:
+            return self.detail.get("currentError") or "Normal Operation"
+        except Exception as exc:
+            _LOGGER.error("Got error failed: %s", exc)
+            return "Unknown"
 
     @property
     def litter_weight(self) -> str:
         """Return the litter weight."""
-        self._litter_weight_during_day.append(
-            float(self.detail.get("catLitterWeight", 0))
-        )
-        return self.detail.get("catLitterWeight")
+        try:
+            self._litter_weight_during_day.append(
+                float(self.detail.get("catLitterWeight", 0))
+            )
+            return self.detail.get("catLitterWeight")
+        except Exception as exc:
+            _LOGGER.error("Got litter weight failed: %s", exc)
+            return 0
 
     @property
     def litter_remaining_days(self) -> str:
         """Return the litter remaining days."""
-        return self.detail.get("litterCountdown")
+        try:
+            return int(self.detail.get("litterCountdown", 0))
+        except Exception as exc:
+            _LOGGER.error("Got litter remaining days failed: %s", exc)
+            return 0
 
     @property
     def total_clean_time(self) -> int:
         """Return the total clean time."""
-        return int(self.detail.get("inductionTimes", 0)) + int(
-            self.detail.get("manualTimes", 0)
-        )
+        try:
+            return int(self.detail.get("inductionTimes", 0)) + int(
+                self.detail.get("manualTimes", 0)
+            )
+        except Exception as exc:
+            _LOGGER.error("Got total clean time failed: %s", exc)
+            return 0
 
     @property
     def manual_clean_time(self) -> int:
         """Return the manual clean time."""
-        return int(self.detail.get("manualTimes", 0))
+        try:
+            return int(self.detail.get("manualTimes", 0))
+        except Exception as exc:
+            _LOGGER.error("Got manual clean time failed: %s", exc)
+            return 0
 
     @property
     def deodorant_countdown(self) -> int:
         """Return the deodorant countdown."""
-        return int(self.detail.get("deodorantCountdown", 0))
+        try:
+            return int(self.detail.get("deodorantCountdown", 0))
+        except Exception as exc:
+            _LOGGER.error("Got deodorant countdown failed: %s", exc)
+            return 0
 
     @property
     def knob_status(self) -> bool:
@@ -149,7 +173,11 @@ class LitterBox(Device):
     @property
     def online(self) -> bool:
         """Return the online status."""
-        return self.detail.get("online")
+        try:
+            return self.detail.get("online")
+        except Exception as exc:
+            _LOGGER.error("Got online status failed: %s", exc)
+            return False
 
     @property
     def last_sync(self) -> str:
@@ -312,9 +340,13 @@ class LitterBox(Device):
 
     def error_attrs(self) -> list:
         """Return the error attributes."""
-        return {
-            "errors": self.detail.get("deviceErrorList"),
-        }
+        try:
+            return {
+                "errors": self.detail.get("deviceErrorList"),
+            }
+        except Exception as exc:
+            _LOGGER.error("Got error attributes failed: %s", exc)
+            return []
 
     # Actions
     async def update_logs(self) -> list:

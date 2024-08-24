@@ -75,43 +75,67 @@ class ScooperDevice(Device):
     @property
     def state(self) -> str:
         """Return the device state."""
-        sta = self.detail.get("workStatus", "")
-        dic = {
-            "00": "idle",
-            "01": "running",
-            "02": "need_reset",
-        }
-        return dic.get(f"{sta}".strip(), sta)
+        try:
+            sta = self.detail.get("workStatus", "")
+            dic = {
+                "00": "idle",
+                "01": "running",
+                "02": "need_reset",
+            }
+            return dic.get(f"{sta}".strip(), sta)
+        except Exception as exc:
+            _LOGGER.error("Get device state failed: %s", exc)
+            return "unknown"
 
     @property
     def litter_weight(self) -> str:
         """Return the litter weight."""
-        self._litter_weight_during_day.append(
-            float(self.detail.get("catLitterWeight", 0))
-        )
-        return self.detail.get("catLitterWeight")
-
+        try:
+            self._litter_weight_during_day.append(
+                float(self.detail.get("catLitterWeight", 0))
+            )
+            return self.detail.get("catLitterWeight")
+        except Exception as exc:
+            _LOGGER.error("Get litter weight failed: %s", exc)
+            return "unknown"\
+            
     @property
     def litter_remaining_days(self) -> str:
         """Return the litter remaining days."""
-        return self.detail.get("litterCountdown")
+        try:
+            return self.detail.get("litterCountdown")
+        except Exception as exc:
+            _LOGGER.error("Get litter remaining days failed: %s", exc)
+            return "unknown"
 
     @property
     def total_clean_time(self) -> int:
         """Return the total clean time."""
-        return int(self.detail.get("inductionTimes", 0)) + int(
-            self.detail.get("manualTimes", 0)
-        )
+        try:
+            return int(self.detail.get("inductionTimes", 0)) + int(
+                self.detail.get("manualTimes", 0)
+            )
+        except Exception as exc:
+            _LOGGER.error("Get total clean time failed: %s", exc)
+            return 0
 
     @property
     def manual_clean_time(self) -> int:
         """Return the manual clean time."""
-        return int(self.detail.get("manualTimes", 0))
+        try:
+            return int(self.detail.get("manualTimes", 0))
+        except Exception as exc:
+            _LOGGER.error("Get manual clean time failed: %s", exc)
+            return 0
 
     @property
     def deodorant_countdown(self) -> int:
         """Return the deodorant countdown."""
-        return int(self.detail.get("deodorantCountdown", 0))
+        try:
+            return int(self.detail.get("deodorantCountdown", 0))
+        except Exception as exc:
+            _LOGGER.error("Get deodorant countdown failed: %s", exc)
+            return 0
 
     @property
     def occupied(self) -> bool:
@@ -130,22 +154,30 @@ class ScooperDevice(Device):
     @property
     def online(self) -> bool:
         """Return the online status."""
-        return self.detail.get("online")
+        try:
+            return self.detail.get("online")
+        except Exception as exc:
+            _LOGGER.error("Get online status failed: %s", exc)
+            return False
 
     @property
     def error(self) -> str:
         """Return the device error."""
-        error = self.detail.get("currentMessage") or self.data.get(
-            "currentErrorMessage", ""
-        )
-        if error and error.lower() != "device online":
-            self._error_logs.append(
-                {
-                    "time": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                    "error": error,
-                }
+        try:
+            error = self.detail.get("currentMessage") or self.data.get(
+                "currentErrorMessage", ""
             )
-        return error
+            if error and error.lower() != "device online":
+                self._error_logs.append(
+                    {
+                        "time": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                        "error": error,
+                    }
+                )
+            return error
+        except Exception as exc:
+            _LOGGER.error("Get device error failed: %s", exc)
+            return "unknown"
 
     @property
     def hass_sensor(self) -> dict:
