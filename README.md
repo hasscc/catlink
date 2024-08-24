@@ -38,7 +38,7 @@
 <br>
 <div style="display: flex; justify-content: flex-end; align-items: center;">
   <span style="margin-right: 10px; font-size: 16px; font-style: italic">Spotted the issue?</span>
-  <a href="https://github.com/milosljubenovic/catlink/issues/new?assignees=&labels=bug%2Ctriage&template=bug_report.yml&title=%5BBug%5D%3A+" target="_blank" style="text-decoration: none;">
+  <a href="https://github.com/milosljubenovic/catlink/issues/new?assignees=&labels=bug%2Ctriage&template=bug_report.md&title=%5BBug%5D%3A+" target="_blank" style="text-decoration: none;">
     <button style="
       background-color: #f44b42;
       border: none;
