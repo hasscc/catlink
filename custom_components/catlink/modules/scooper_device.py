@@ -119,10 +119,13 @@ class ScooperDevice(Device):
         # based on _litter_weight_during_day to determine if the litter box is occupied
         # check whether value is increasing at any point in the day
         # Now we can check which cat is using the litter box :)
-        return any(
-            self._litter_weight_during_day[i] < self._litter_weight_during_day[i + 1]
-            for i in range(len(self._litter_weight_during_day) - 1)
-        )
+        try:
+            return any(
+                self._litter_weight_during_day[i] < self._litter_weight_during_day[i + 1]
+                for i in range(len(self._litter_weight_during_day) - 1)
+            )
+        except IndexError:
+            return False
 
     @property
     def online(self) -> bool:

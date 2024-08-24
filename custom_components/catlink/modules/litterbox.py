@@ -117,15 +117,19 @@ class LitterBox(Device):
     @property
     def knob_status(self) -> bool:
         """Return the knob status."""
-        knob_flab = (
-            any(
-                "left_knob_abnormal" in e.get("errkey")
-                for e in self.detail.get("deviceErrorList", [])
+        try:
+            knob_flab = (
+                any(
+                    "left_knob_abnormal" in e.get("errkey")
+                    for e in self.detail.get("deviceErrorList", [])
+                )
+                if self.detail
+                else False
             )
-            if self.detail
-            else False
-        )
-        return "Empty Mode" if knob_flab else "Cleaning Mode"
+            return "Empty Mode" if knob_flab else "Cleaning Mode"
+        except Exception as exc:
+            _LOGGER.error("Got knob status failed: %s", exc)
+            return "Unknown"
 
     @property
     def occupied(self) -> bool:
@@ -133,10 +137,14 @@ class LitterBox(Device):
         # based on _litter_weight_during_day to determine if the litter box is occupied
         # check whether value is increasing at any point in the day
         # Now we can check which cat is using the litter box :)
-        return any(
-            self._litter_weight_during_day[i] < self._litter_weight_during_day[i + 1]
-            for i in range(len(self._litter_weight_during_day) - 1)
-        )
+        try:
+            return any(
+                self._litter_weight_during_day[i] < self._litter_weight_during_day[i + 1]
+                for i in range(len(self._litter_weight_during_day) - 1)
+            )
+        except Exception as exc:
+            _LOGGER.error("Got occupied status failed: %s", exc)
+            return False
 
     @property
     def online(self) -> bool:
@@ -157,15 +165,19 @@ class LitterBox(Device):
     @property
     def garbage_tobe_status(self) -> str:
         """Return the garbage to be status."""
-        full_flag = (
-            any(
-                "garbage_tobe_full_abnormal" in e.get("errkey")
-                for e in self.detail.get("deviceErrorList", [])
+        try:
+            full_flag = (
+                any(
+                    "garbage_tobe_full_abnormal" in e.get("errkey")
+                    for e in self.detail.get("deviceErrorList", [])
+                )
+                if self.detail
+                else False
             )
-            if self.detail
-            else False
-        )
-        return "Full" if full_flag else "Normal"
+            return "Full" if full_flag else "Normal"
+        except Exception as exc:
+            _LOGGER.error("Got garbage to be status failed: %s", exc)
+            return "Unknown"
 
     @property
     def hass_sensor(self) -> dict:
