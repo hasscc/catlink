@@ -28,7 +28,7 @@ class Helper:
         """
 
         return (
-            timedelta(seconds=10)
+            timedelta(minutes=10)
             if not update_interval_str
             or not re.match(r"^\d{2}:\d{2}:\d{2}$", update_interval_str)
             else timedelta(

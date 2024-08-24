@@ -13,7 +13,7 @@ async_setup_accounts = Helper.async_setup_accounts
 
 
 async def async_setup(hass: HomeAssistant, hass_config: dict) -> bool:
-    """Set up the Catlink custom component."""
+    """"""
 
     hass.data.setdefault(DOMAIN, {})
     config = hass_config.get(DOMAIN) or {}

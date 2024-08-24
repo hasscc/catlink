@@ -214,7 +214,7 @@ class LitterBox(Device):
                 else "mdi:circle",
             },
             "occupied": {
-                "icon": "mdi:paw",
+                "icon": "mdi:cat",
             },
             "online": {
                 "icon": "mdi:wifi",

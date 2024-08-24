@@ -88,7 +88,7 @@ class Account:
         kws = {
             "timeout": 60,
             "headers": {
-                "language": self.get_config(CONF_LANGUAGE),
+                "language": self.get_config(CONF_LANGUAGE, "en_GB"),
                 "User-Agent": "okhttp/3.10.0",
                 "token": self.token,
             },
@@ -119,7 +119,7 @@ class Account:
         pms = {
             "platform": "ANDROID",
             "internationalCode": self._config.get(CONF_PHONE_IAC),
-            "mobile": self.phone,
+            "mobile": str(self.phone),
             "password": self.password,
         }
         self._config.update(
