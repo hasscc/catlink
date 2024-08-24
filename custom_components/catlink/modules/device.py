@@ -63,7 +63,7 @@ class Device:
     def type(self) -> str:
         """Return the device type."""
         try:
-            return self.data.get("type")
+            return self.data.get("deviceType")
         except (TypeError, ValueError):
             return None
 
