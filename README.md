@@ -1,61 +1,20 @@
-<div style="display: flex; align-items: center; justify-content: center; flex-direction: column; margin-bottom: 50px">
-<div style="margin-top: 10px; font-size: 24px; text-align: center;">
-    CATLINK v2 Integration for Home Assistant
-  </div>
+<div align="center">
+  <h2>CATLINK v2 Integration for Home Assistant</h2>
 </div>
 
-<div style="display: flex; align-items: center; justify-content: center; flex-direction: column;">
-  <div style="display: flex; align-items: center; justify-content: center;">
-    <img src="https://play-lh.googleusercontent.com/eHPhN_fUDhdxMK4JAvlzjB5Mh-H72crLn2U3Khk37lzolNg2CTDgZXkB5bjPiM3CDqM" alt="CatLINK Logo" width="100">
-    <span style="font-size: 50px; margin: 0 20px;">+</span>
-    <img src="https://upload.wikimedia.org/wikipedia/en/thumb/4/49/Home_Assistant_logo_%282023%29.svg/2048px-Home_Assistant_logo_%282023%29.svg.png" alt="Home Assistant Logo" width="100">
-  </div>
-  <div style="margin-top: 10px; font-size: 20px; text-align: center;">
-    Made easy, for 😸 lovers.
-  </div>
+<div align="center">
+  <img src="https://play-lh.googleusercontent.com/eHPhN_fUDhdxMK4JAvlzjB5Mh-H72crLn2U3Khk37lzolNg2CTDgZXkB5bjPiM3CDqM" alt="CatLINK Logo" width="100">
+  <span style="font-size: 50px; margin: 0 20px;">+</span>
+  <img src="https://upload.wikimedia.org/wikipedia/en/thumb/4/49/Home_Assistant_logo_%282023%29.svg/2048px-Home_Assistant_logo_%282023%29.svg.png" alt="Home Assistant Logo" width="100">
 </div>
 
-<div style="display: flex; justify-content: flex-end; margin-top: 20px;">
-  <a href="https://github.com/hasscc/catlink" target="_blank" style="text-decoration: none;">
-    <button style="
-      background-color: #0366d6;
-      border: none;
-      color: white;
-      padding: 6px 6px;
-      text-align: center;
-      text-decoration: none;
-      display: inline-block;
-      font-size: 10px;
-      margin: 4px 2px;
-      cursor: pointer;
-      border-radius: 4px;
-    ">
-      Original Repository
-    </button>
-  </a>
+<div align="center">
+  <h3>Made easy, for 😸 lovers.</h3>
 </div>
 
 <br>
-<div style="display: flex; justify-content: flex-end; align-items: center;">
-  <span style="margin-right: 10px; font-size: 16px; font-style: italic">Spotted the issue?</span>
-  <a href="https://github.com/milosljubenovic/catlink/issues/new?assignees=&labels=bug%2Ctriage&template=bug_report.md&title=%5BBug%5D%3A+" target="_blank" style="text-decoration: none;">
-    <button style="
-      background-color: #f44b42;
-      border: none;
-      color: white;
-      padding: 10px 20px;
-      text-align: center;
-      text-decoration: none;
-      display: inline-block;
-      font-size: 16px;
-      margin: 4px 2px;
-      cursor: pointer;
-      border-radius: 4px;
-    ">
-      Report a Bug
-    </button>
-  </a>
-</div>
+
+<div align="right"><span style="margin-right: 10px; font-size: 16px; font-style: italic">Spotted the issue?</span><a href="https://github.com/hasscc/catlink/issues/new?assignees=&labels=bug%2Ctriage&template=bug_report.md&title=%5BBug%5D%3A+" target="_blank" style="text-decoration: none;"><button style="background-color: #f44b42; border: none; color: white; padding: 10px 20px; text-align: center; text-decoration: none; display: inline-block; font-size: 16px; margin: 4px 2px; cursor: pointer; border-radius: 4px;">Report a Bug</button></a></div>
 
 ---
 
@@ -101,7 +60,7 @@ The CatLINK custom integration provides seamless support for integrating your Ca
 
 ```shell
 # Auto install via terminal shell
-wget -q -O - https://cdn.jsdelivr.net/gh/al-one/hass-xiaomi-miot/install.sh | DOMAIN=catlink REPO_PATH=milosljubenovic/catlink ARCHIVE_TAG=main bash -
+wget -q -O - https://cdn.jsdelivr.net/gh/al-one/hass-xiaomi-miot/install.sh | DOMAIN=catlink REPO_PATH=hasscc/catlink ARCHIVE_TAG=main bash -
 ```
 
 #### Manually
