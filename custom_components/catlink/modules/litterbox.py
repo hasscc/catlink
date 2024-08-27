@@ -16,6 +16,7 @@ if TYPE_CHECKING:
 class LitterBox(Device):
     """Litter box class for CatLink."""
 
+    EMPTY_LITTER_BOX_WEIGHT = 2.87
     logs: list
     coordinator_logs = None
 
@@ -89,16 +90,20 @@ class LitterBox(Device):
             return "Unknown"
 
     @property
-    def litter_weight(self) -> str:
+    def litter_weight(self) -> float:
         """Return the litter weight."""
+        litter_weight = 0
         try:
-            self._litter_weight_during_day.append(
-                float(self.detail.get("catLitterWeight", 0))
+            catLitterWeight = self.detail.get(
+                "catLitterWeight", self.EMPTY_LITTER_BOX_WEIGHT
             )
-            return self.detail.get("catLitterWeight")
+            litter_weight = catLitterWeight - self.EMPTY_LITTER_BOX_WEIGHT
+            self._litter_weight_during_day.append(litter_weight)
+
         except Exception as exc:
             _LOGGER.error("Got litter weight failed: %s", exc)
-            return 0
+
+        return litter_weight
 
     @property
     def litter_remaining_days(self) -> str:
@@ -163,7 +168,8 @@ class LitterBox(Device):
         # Now we can check which cat is using the litter box :)
         try:
             return any(
-                self._litter_weight_during_day[i] < self._litter_weight_during_day[i + 1]
+                self._litter_weight_during_day[i]
+                < self._litter_weight_during_day[i + 1]
                 for i in range(len(self._litter_weight_during_day) - 1)
             )
         except Exception as exc:
