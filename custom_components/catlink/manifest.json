@@ -1,10 +1,10 @@
 {
   "domain": "catlink",
   "name": "CatLink",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "documentation": "https://github.com/hasscc/catlink",
   "issue_tracker": "https://github.com/hasscc/catlink/issues",
   "requirements": [],
-  "codeowners": [],
+  "codeowners": ["@milosljubenovic"],
   "iot_class": "cloud_polling"
 }
