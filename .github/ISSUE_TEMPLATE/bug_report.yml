@@ -1,0 +1,81 @@
+name: Bug Report
+description: File a bug report.
+title: "[Bug]: "
+labels: ["bug", "triage"]
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to fill out this bug report! Please provide as much detail as possible to help us diagnose and fix the issue.
+
+  - type: input
+    id: device
+    attributes:
+      label: Device
+      description: What device are you using?
+      placeholder: ex. SCOOPER C1 SE
+    validations:
+      required: true
+      
+  - type: input
+    id: contact
+    attributes:
+      label: Contact Details
+      description: How can we get in touch with you if we need more info?
+      placeholder: ex. email@example.com
+    validations:
+      required: false
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: Also tell us, what did you expect to happen?
+      placeholder: Describe the issue and what you expected to happen.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: ha-version
+    attributes:
+      label: Home Assistant Version
+      description: What version of Home Assistant are you using?
+      options:
+        - 2024.8.6
+        - 2024.7.5
+        - Other
+      validations:
+        required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant Log Output
+      description: Please copy and paste any relevant log output from Home Assistant. This will be automatically formatted into code.
+      render: shell
+      placeholder: |
+        2024-08-23 14:52:01 ERROR (MainThread) [homeassistant.components.catlink] Error doing job: Task exception was never retrieved
+        Traceback (most recent call last):
+          ...
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Checklist
+      description: Please ensure the following before submitting the issue:
+      options:
+        - label: I have updated to the latest version of the integration
+          required: true
+        - label: I have checked the Home Assistant logs for errors related to this issue
+          required: true
+        - label: I have searched the issues and found no duplicates
+          required: true
+
+  - type: markdown
+    attributes:
+      value: |
+        By submitting this issue, you agree to follow our [Code of Conduct](https://github.com/hasscc/catlink/CODE_OF_CONDUCT.md).
