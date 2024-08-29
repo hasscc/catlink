@@ -14,7 +14,10 @@
 
 <br>
 
-<div align="right"><span style="margin-right: 10px; font-size: 16px; font-style: italic">Spotted the issue?</span><a href="https://github.com/hasscc/catlink/issues/new?assignees=&labels=bug%2Ctriage&template=bug_report.md&title=%5BBug%5D%3A+" target="_blank" style="text-decoration: none;"><button style="background-color: #f44b42; border: none; color: white; padding: 10px 20px; text-align: center; text-decoration: none; display: inline-block; font-size: 16px; margin: 4px 2px; cursor: pointer; border-radius: 4px;">Report a Bug</button></a></div>
+<div align="right">
+  <span style="margin-right: 10px; font-size: 16px; font-style: italic">Spotted the issue?</span>
+  <a href="https://github.com/hasscc/catlink/issues/new?assignees=&labels=bug%2Ctriage&template=bug_report.md&title=%5BBug%5D%3A+" target="_blank" style="text-decoration: none;"><span style="background-color: #f44b42; border: none; color: white; padding: 10px 20px; text-align: center; text-decoration: none; display: inline-block; font-size: 16px; margin: 4px 2px; cursor: pointer; border-radius: 4px;">Report a Bug</span></a>
+</div>
 
 ---
 
@@ -56,20 +59,31 @@ The CatLINK custom integration provides seamless support for integrating your Ca
 
 # Installation:
 
-#### Easy way
+### Easy way
+[![HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?category=integration&owner=hasscc&repository=catlink)
 
+### Manually
+
+#### Method 1: Manually installation via Samba / SFTP
+> Download and copy `custom_components/catlink` folder to `custom_components` folder in your HomeAssistant config folder
+
+#### Method 2: Onkey shell via SSH / Terminal & SSH add-on
 ```shell
-# Auto install via terminal shell
-wget -q -O - https://cdn.jsdelivr.net/gh/al-one/hass-xiaomi-miot/install.sh | DOMAIN=catlink REPO_PATH=hasscc/catlink ARCHIVE_TAG=main bash -
+wget -O - https://get.hacs.vip | DOMAIN=catlink REPO_PATH=hasscc/catlink ARCHIVE_TAG=main bash -
 ```
 
-#### Manually
+#### Method 3: shell_command service
+1. Copy this code to file `configuration.yaml`
+    ```yaml
+    shell_command:
+      update_catlink: |-
+        wget -O - https://get.hacs.vip | DOMAIN=catlink REPO_PATH=hasscc/catlink ARCHIVE_TAG=main bash -
+    ```
+2. Restart HA core
+3. Call this [`service: shell_command.update_catlink`](https://my.home-assistant.io/redirect/developer_call_service/?service=shell_command.update_catlink) in Developer Tools
+2. Restart HA core again
 
-1. Download the custom integration from the provided repository and add it to your Home Assistant configuration.
-2. Configure the integration by providing your CatLINK account details, including phone number, password, and other relevant information into `configuration.yaml`
-3. Add the CatLINK entities to your Home Assistant dashboard to start monitoring and controlling your devices.
-
-#### Configuration Example:
+### Configuration Example:
 
 ```yaml
 catlink:
