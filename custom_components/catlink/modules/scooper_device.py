@@ -3,9 +3,11 @@
 import datetime
 from typing import TYPE_CHECKING
 
+from homeassistant.components.sensor import SensorDeviceClass, SensorStateClass
+from homeassistant.const import UnitOfTemperature, PERCENTAGE
+
 if TYPE_CHECKING:
     from .devices_coordinator import DevicesCoordinator
-
 
 from collections import deque
 
@@ -97,8 +99,8 @@ class ScooperDevice(Device):
             return self.detail.get("catLitterWeight")
         except Exception as exc:
             _LOGGER.error("Get litter weight failed: %s", exc)
-            return "unknown"\
-            
+            return "unknown"
+
     @property
     def litter_remaining_days(self) -> str:
         """Return the litter remaining days."""
@@ -161,6 +163,22 @@ class ScooperDevice(Device):
             return False
 
     @property
+    def temperature(self):
+        try:
+            return float(self.detail.get("temperature", 0))
+        except Exception as exc:
+            _LOGGER.error("Get temperature failed: %s", exc)
+            return 0
+
+    @property
+    def humidity(self):
+        try:
+            return float(self.detail.get("humidity", 0))
+        except Exception as exc:
+            _LOGGER.error("Get humidity failed: %s", exc)
+            return 0
+
+    @property
     def error(self) -> str:
         """Return the device error."""
         try:
@@ -211,6 +229,20 @@ class ScooperDevice(Device):
             },
             "online": {
                 "icon": "mdi:cloud",
+            },
+            'temperature': {
+                'icon': 'mdi:temperature-celsius',
+                'state': self.temperature,
+                'class': SensorDeviceClass.TEMPERATURE,
+                'unit': UnitOfTemperature.CELSIUS,
+                "state_class": SensorStateClass.MEASUREMENT
+            },
+            'humidity': {
+                'icon': 'mdi:water-percent',
+                'state': self.humidity,
+                'class': SensorDeviceClass.HUMIDITY,
+                'unit': PERCENTAGE,
+                "state_class": SensorStateClass.MEASUREMENT
             },
             "error": {
                 "icon": "mdi:alert-circle",
