@@ -1,10 +1,10 @@
 """The component."""
 
-from typing import TYPE_CHECKING
-
 from homeassistant.const import CONF_DEVICES
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
+from .account import Account
+from .device import Device
 from ..binary_sensor import CatlinkBinarySensorEntity
 from ..const import _LOGGER, DOMAIN, SUPPORTED_DOMAINS
 from ..modules.litterbox import LitterBox
@@ -12,10 +12,6 @@ from ..modules.scooper_device import ScooperDevice
 from ..select import CatlinkSelectEntity
 from ..sensor import CatlinkSensorEntity
 from ..switch import CatlinkSwitchEntity
-
-if TYPE_CHECKING:
-    from ..modules import Device
-    from .account import Account
 
 
 class DevicesCoordinator(DataUpdateCoordinator):
