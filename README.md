@@ -161,6 +161,13 @@ catlink:
   scan_interval: # Optional, default is 00:01:00
   language: "en_GB"
 
+  devices: # Optional
+    - name: "Scooper C1" # Optional 
+      mac: "AABBCCDDEE" # Optional
+      empty_weight: 3.0 # (Optional) Empty litterbox weight defaults to 0.0
+      max_samples_litter: 24 # (Optional) Number of samples to determinate whether cat is inside
+
+
   # Multiple accounts
   accounts:
     - username: 18866660001
