@@ -138,6 +138,8 @@ catlink:
       <li>Litter weight measurement</li>
       <li>Occupacy flag</li>
       <li>Cleaning count</li>
+      <li>Temperature (Celsius)</li>
+      <li>Humidity</li>
       <li>Online status</li>
       <li>Logs & Error</li>
     </ul>
