@@ -1,10 +1,8 @@
 "Scooper device module for CatLink integration."
 
 import datetime
-from typing import TYPE_CHECKING
 
-if TYPE_CHECKING:
-    from .devices_coordinator import DevicesCoordinator
+from .devices_coordinator import DevicesCoordinator
 
 
 from collections import deque

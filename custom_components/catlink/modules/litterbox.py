@@ -2,15 +2,13 @@
 
 from collections import deque
 import datetime
-from typing import TYPE_CHECKING
 
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
 from ..const import _LOGGER, DOMAIN
 from .device import Device
 
-if TYPE_CHECKING:
-    from .devices_coordinator import DevicesCoordinator
+from .devices_coordinator import DevicesCoordinator
 
 
 class LitterBox(Device):

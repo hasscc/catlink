@@ -2,14 +2,12 @@
 
 from datetime import timedelta
 import re
-from typing import TYPE_CHECKING
 
 from homeassistant.core import HomeAssistant
 
 from .const import DOMAIN
 
-if TYPE_CHECKING:
-    from .modules.devices_coordinator import DevicesCoordinator
+from .modules.devices_coordinator import DevicesCoordinator
 
 
 class Helper:
