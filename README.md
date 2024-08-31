@@ -143,6 +143,18 @@ catlink:
     </ul>
   </div>
 
+  <div style="text-align: center; width: 45%;">
+    <h3><a href="https://www.catlinkus.com/products/catlink-ai-feeder-for-only-pet-young">Feeder Young</a></h3>
+    <img src="https://cdn.shopify.com/s/files/1/0641/0056/5251/files/3_94db5ca7-eeeb-4f76-bd7a-c35c3a434a48_610x610_crop_center.jpg?v=1718122855" alt="Feeder Young" width="150">
+    <h4>Operations</h4>
+    <ul style="text-align: left;">
+      <li>Feed Button</li>
+      <li>Food tray weight</li>
+      <li>Online status</li>
+      <li>Logs & Error</li>
+    </ul>
+  </div>
+
 </div>
 
 ### How to Configure?
