@@ -7,6 +7,7 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
 from .device import Device
 from ..const import _LOGGER, DOMAIN
+from ..models.additional_cfg import AdditionalDeviceConfig
 
 if TYPE_CHECKING:
     from .devices_coordinator import DevicesCoordinator
@@ -18,8 +19,12 @@ class FeederDevice(Device):
     logs: list
     coordinator_logs = None
 
-    def __init__(self, dat: dict, coordinator: "DevicesCoordinator") -> None:
+    def __init__(self,
+                 dat: dict, coordinator: "DevicesCoordinator",
+                 additional_config: AdditionalDeviceConfig = None,
+                 ) -> None:
         super().__init__(dat, coordinator)
+        self.additional_config = additional_config
 
     @property
     def weight(self):
