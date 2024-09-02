@@ -139,6 +139,11 @@ class Device:
         return {}
 
     @property
+    def hass_button(self):
+        """Return the device buttons."""
+        return {}
+
+    @property
     def hass_select(self) -> dict:
         """Return the device selects."""
         return {

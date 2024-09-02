@@ -6,7 +6,9 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from .account import Account
 from .device import Device
 from ..binary_sensor import CatlinkBinarySensorEntity
+from ..button import CatlinkButtonEntity
 from ..const import _LOGGER, DOMAIN, SUPPORTED_DOMAINS
+from ..modules.feeder_device import FeederDevice
 from ..modules.litterbox import LitterBox
 from ..modules.scooper_device import ScooperDevice
 from ..select import CatlinkSelectEntity
@@ -55,6 +57,8 @@ class DevicesCoordinator(DataUpdateCoordinator):
                         dvc = ScooperDevice(dat, self, additional_config)
                     case "LITTER_BOX_599":  # SCOOPER C1
                         dvc = LitterBox(dat, self, additional_config)
+                    case "FEEDER":
+                        dvc = FeederDevice(dat, self, additional_config)
                     case _:
                         dvc = Device(dat, self)
                 self.hass.data[DOMAIN][CONF_DEVICES][did] = dvc
@@ -82,6 +86,8 @@ class DevicesCoordinator(DataUpdateCoordinator):
                 new = CatlinkSwitchEntity(k, dvc, cfg)
             elif domain == "select":
                 new = CatlinkSelectEntity(k, dvc, cfg)
+            elif domain == "button":
+                new = CatlinkButtonEntity(k, dvc, cfg)
             if new:
                 self._subs[key] = new
                 add([new])

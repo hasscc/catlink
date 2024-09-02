@@ -3,10 +3,9 @@
 import datetime
 import logging
 
-import voluptuous as vol
-
-from homeassistant.const import CONF_PASSWORD, CONF_SCAN_INTERVAL
 import homeassistant.helpers.config_validation as cv
+import voluptuous as vol
+from homeassistant.const import CONF_PASSWORD, CONF_SCAN_INTERVAL
 
 DOMAIN = "catlink"
 _LOGGER = logging.getLogger(__name__)
@@ -49,6 +48,7 @@ SUPPORTED_DOMAINS = [
     "binary_sensor",
     "switch",
     "select",
+    "button",
 ]
 
 ACCOUNT_SCHEMA = vol.Schema(

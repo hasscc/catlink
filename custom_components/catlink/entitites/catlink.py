@@ -1,6 +1,7 @@
 """The component."""
 
 from homeassistant.components import persistent_notification
+from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from ..const import _LOGGER, DOMAIN
@@ -26,13 +27,14 @@ class CatlinkEntity(CoordinatorEntity):
         self._attr_icon = self._option.get("icon")
         self._attr_device_class = self._option.get("class")
         self._attr_unit_of_measurement = self._option.get("unit")
-        self._attr_device_info = {
-            "identifiers": {(DOMAIN, self._attr_device_id)},
-            "name": device.name,
-            "model": device.model,
-            "manufacturer": "CatLink",
-            "sw_version": device.detail.get("firmwareVersion"),
-        }
+        self._attr_state_class = option.get("state_class")
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, self._attr_device_id)},
+            name=device.name,
+            model=device.model,
+            manufacturer="CatLink",
+            sw_version=device.detail.get("firmwareVersion"),
+        )
 
     async def async_added_to_hass(self) -> None:
         """Run when entity about to be added to hass."""
