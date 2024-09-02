@@ -1,21 +1,16 @@
 "Scooper device module for CatLink integration."
 
 import datetime
-from typing import TYPE_CHECKING
+from collections import deque
 
 from homeassistant.components.sensor import SensorDeviceClass, SensorStateClass
 from homeassistant.const import UnitOfTemperature, PERCENTAGE
-
-if TYPE_CHECKING:
-    from .devices_coordinator import DevicesCoordinator
-
-from collections import deque
-
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
+from .device import Device
+from .devices_coordinator import DevicesCoordinator
 from ..const import _LOGGER, DOMAIN
 from ..models.additional_cfg import AdditionalDeviceConfig
-from .device import Device
 
 
 class ScooperDevice(Device):
