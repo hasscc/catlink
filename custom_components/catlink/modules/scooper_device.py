@@ -12,6 +12,7 @@ from collections import deque
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
 from ..const import _LOGGER, DOMAIN
+from ..models.additional_cfg import AdditionalDeviceConfig
 from .device import Device
 
 
@@ -21,10 +22,19 @@ class ScooperDevice(Device):
     logs: list
     coordinator_logs = None
 
-    def __init__(self, dat: dict, coordinator: "DevicesCoordinator") -> None:
+    def __init__(
+        self,
+        dat: dict,
+        coordinator: "DevicesCoordinator",
+        additional_config: AdditionalDeviceConfig,
+    ) -> None:
         super().__init__(dat, coordinator)
-        self._litter_weight_during_day = deque(maxlen=24)
+        self._litter_weight_during_day = deque(
+            maxlen=additional_config.max_samples_litter or 24
+        )
         self._error_logs = deque(maxlen=20)
+        self.additional_config = additional_config
+        self.empty_litter_box_weight = additional_config.empty_weight or 0.0
 
     async def async_init(self) -> None:
         """Initialize the device."""
@@ -88,17 +98,21 @@ class ScooperDevice(Device):
             return "unknown"
 
     @property
-    def litter_weight(self) -> str:
+    def litter_weight(self) -> float:
         """Return the litter weight."""
+        litter_weight = 0
         try:
-            self._litter_weight_during_day.append(
-                float(self.detail.get("catLitterWeight", 0))
+            catLitterWeight = self.detail.get(
+                "catLitterWeight", self.empty_litter_box_weight
             )
-            return self.detail.get("catLitterWeight")
+            litter_weight = catLitterWeight - self.empty_litter_box_weight
+            self._litter_weight_during_day.append(litter_weight)
+
         except Exception as exc:
-            _LOGGER.error("Get litter weight failed: %s", exc)
-            return "unknown"\
-            
+            _LOGGER.error("Got litter weight failed: %s", exc)
+
+        return litter_weight
+
     @property
     def litter_remaining_days(self) -> str:
         """Return the litter remaining days."""
@@ -145,7 +159,8 @@ class ScooperDevice(Device):
         # Now we can check which cat is using the litter box :)
         try:
             return any(
-                self._litter_weight_during_day[i] < self._litter_weight_during_day[i + 1]
+                self._litter_weight_during_day[i]
+                < self._litter_weight_during_day[i + 1]
                 for i in range(len(self._litter_weight_during_day) - 1)
             )
         except IndexError:

@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
 from ..const import _LOGGER, DOMAIN
+from ..models.additional_cfg import AdditionalDeviceConfig
 from .device import Device
 
 if TYPE_CHECKING:
@@ -16,15 +17,22 @@ if TYPE_CHECKING:
 class LitterBox(Device):
     """Litter box class for CatLink."""
 
-    EMPTY_LITTER_BOX_WEIGHT = 2.87
     logs: list
     coordinator_logs = None
 
-    def __init__(self, dat: dict, coordinator: "DevicesCoordinator") -> None:
+    def __init__(
+        self,
+        dat: dict,
+        coordinator: "DevicesCoordinator",
+        additional_config: AdditionalDeviceConfig = None,
+    ) -> None:
         """Initialize the litter box."""
         super().__init__(dat, coordinator)
         self.logs = []
-        self._litter_weight_during_day = deque(maxlen=24)
+        self._litter_weight_during_day = deque(
+            maxlen=additional_config.max_samples_litter or 24
+        )
+        self.empty_litter_box_weight = additional_config.empty_weight or 0.0
 
     async def async_init(self) -> None:
         """Initialize the litter box."""
@@ -95,9 +103,9 @@ class LitterBox(Device):
         litter_weight = 0
         try:
             catLitterWeight = self.detail.get(
-                "catLitterWeight", self.EMPTY_LITTER_BOX_WEIGHT
+                "catLitterWeight", self.empty_litter_box_weight
             )
-            litter_weight = catLitterWeight - self.EMPTY_LITTER_BOX_WEIGHT
+            litter_weight = catLitterWeight - self.empty_litter_box_weight
             self._litter_weight_during_day.append(litter_weight)
 
         except Exception as exc:
