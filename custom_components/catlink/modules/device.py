@@ -1,11 +1,9 @@
 """Device module for CatLink integration."""
 
-from typing import TYPE_CHECKING
 
 from ..const import _LOGGER
 
-if TYPE_CHECKING:
-    from .devices_coordinator import DevicesCoordinator
+from .devices_coordinator import DevicesCoordinator
 
 
 class Device:
