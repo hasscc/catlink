@@ -12,6 +12,7 @@ from ..modules.scooper_device import ScooperDevice
 from ..select import CatlinkSelectEntity
 from ..sensor import CatlinkSensorEntity
 from ..switch import CatlinkSwitchEntity
+from ..models.additional_cfg import AdditionalDeviceConfig
 
 if TYPE_CHECKING:
     from ..modules import Device
@@ -31,11 +32,19 @@ class DevicesCoordinator(DataUpdateCoordinator):
         )
         self.account = account
         self._subs = {}
+        self.additional_config = self.hass.data[DOMAIN]["config"].get(CONF_DEVICES, {})
+        self.additional_config = [
+            AdditionalDeviceConfig(**cfg) for cfg in self.additional_config
+        ]
 
     async def _async_update_data(self) -> dict:
         """Update data via API."""
         dls = await self.account.get_devices()
         for dat in dls:
+            additional_config = next(
+                (cfg for cfg in self.additional_config if cfg.mac == dat.get("mac")),
+                None,
+            )
             did = dat.get("id")
             if not did:
                 continue
@@ -47,9 +56,9 @@ class DevicesCoordinator(DataUpdateCoordinator):
                 typ = dat.get("deviceType")
                 match typ:
                     case "SCOOPER":
-                        dvc = ScooperDevice(dat, self)
+                        dvc = ScooperDevice(dat, self, additional_config)
                     case "LITTER_BOX_599":  # SCOOPER C1
-                        dvc = LitterBox(dat, self)
+                        dvc = LitterBox(dat, self, additional_config)
                     case _:
                         dvc = Device(dat, self)
                 self.hass.data[DOMAIN][CONF_DEVICES][did] = dvc
