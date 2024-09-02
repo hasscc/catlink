@@ -1,0 +1,47 @@
+{
+  "returnCode": 0,
+  "toast": false,
+  "msg": null,
+  "data": {
+    "scooperLogTop5": [
+      {
+        "id": "1",
+        "type": "RUN",
+        "time": "16:45",
+        "event": "Auto Clean",
+        "unrecognized": false,
+        "firstSection": "Once",
+        "secondSection": "",
+        "modifyFlag": false,
+        "snFlag": 0,
+        "petId": "0"
+      },
+      {
+        "id": "2",
+        "type": "WC",
+        "time": "16:32",
+        "event": "GUAGUA peed",
+        "unrecognized": false,
+        "firstSection": "6.6kg",
+        "secondSection": "55s",
+        "modifyFlag": true,
+        "snFlag": 0,
+        "petId": "1"
+      },
+      {
+        "id": "3",
+        "type": "WC",
+        "time": "15:14",
+        "event": "BAOBAO peed",
+        "unrecognized": false,
+        "firstSection": "7.1kg",
+        "secondSection": "133s",
+        "modifyFlag": true,
+        "snFlag": 0,
+        "petId": "2"
+      }
+    ]
+  },
+  "timestamp": "1725276682688",
+  "success": true
+}
