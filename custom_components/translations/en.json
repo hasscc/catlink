@@ -1,0 +1,26 @@
+{
+  "services": {
+    "request_api": {
+      "name": "Request API",
+      "description": "Make a request to the CatLink API",
+      "fields": {
+        "api": {
+          "name": "API Path",
+          "description": "The path to the API endpoint."
+        },
+        "params": {
+          "name": "Request Parameters",
+          "description": "Parameters for the API request in JSON format."
+        },
+        "method": {
+          "name": "Request Method",
+          "description": "HTTP method to use for the request."
+        },
+        "throw": {
+          "name": "Throw Result",
+          "description": "Whether to throw an exception on a failed request."
+        }
+      }
+    }
+  }
+}
