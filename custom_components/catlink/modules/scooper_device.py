@@ -10,8 +10,9 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
 from .device import Device
 
-if TYPE_CHECKING:
+if TYPE_CHECKING: # pragma: no cover
     from .devices_coordinator import DevicesCoordinator
+    
 from ..const import _LOGGER, DOMAIN
 from ..models.additional_cfg import AdditionalDeviceConfig
 

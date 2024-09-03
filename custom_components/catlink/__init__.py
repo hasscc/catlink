@@ -8,7 +8,6 @@ from .const import _LOGGER, CONF_ACCOUNTS, DOMAIN, SCAN_INTERVAL, SUPPORTED_DOMA
 from .modules.account import Account
 from .modules.devices_coordinator import DevicesCoordinator
 
-
 async def async_setup(hass: HomeAssistant, hass_config: dict) -> bool:
     """Set up the CatLink component."""
 

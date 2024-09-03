@@ -8,7 +8,7 @@ from homeassistant.core import HomeAssistant
 
 from .const import DOMAIN
 
-if TYPE_CHECKING:
+if TYPE_CHECKING: # pragma: no cover
     from .modules.devices_coordinator import DevicesCoordinator
 
 
