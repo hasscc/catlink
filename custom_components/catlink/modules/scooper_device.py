@@ -1,14 +1,17 @@
 "Scooper device module for CatLink integration."
 
-import datetime
 from collections import deque
+import datetime
+from typing import TYPE_CHECKING
 
 from homeassistant.components.sensor import SensorDeviceClass, SensorStateClass
-from homeassistant.const import UnitOfTemperature, PERCENTAGE
+from homeassistant.const import PERCENTAGE, UnitOfTemperature
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
 from .device import Device
-from .devices_coordinator import DevicesCoordinator
+
+if TYPE_CHECKING:
+    from .devices_coordinator import DevicesCoordinator
 from ..const import _LOGGER, DOMAIN
 from ..models.additional_cfg import AdditionalDeviceConfig
 
@@ -23,15 +26,15 @@ class ScooperDevice(Device):
         self,
         dat: dict,
         coordinator: "DevicesCoordinator",
-        additional_config: AdditionalDeviceConfig,
+        additional_config: AdditionalDeviceConfig = None,
     ) -> None:
-        super().__init__(dat, coordinator)
+        super().__init__(dat, coordinator, additional_config)
         self._litter_weight_during_day = deque(
-            maxlen=additional_config.max_samples_litter or 24
+            maxlen=self.additional_config.max_samples_litter or 24
         )
         self._error_logs = deque(maxlen=20)
         self.additional_config = additional_config
-        self.empty_litter_box_weight = additional_config.empty_weight or 0.0
+        self.empty_litter_box_weight = self.additional_config.empty_weight or 0.0
 
     async def async_init(self) -> None:
         """Initialize the device."""
@@ -240,19 +243,19 @@ class ScooperDevice(Device):
             "online": {
                 "icon": "mdi:cloud",
             },
-            'temperature': {
-                'icon': 'mdi:temperature-celsius',
-                'state': self.temperature,
-                'class': SensorDeviceClass.TEMPERATURE,
-                'unit': UnitOfTemperature.CELSIUS,
-                "state_class": SensorStateClass.MEASUREMENT
+            "temperature": {
+                "icon": "mdi:temperature-celsius",
+                "state": self.temperature,
+                "class": SensorDeviceClass.TEMPERATURE,
+                "unit": UnitOfTemperature.CELSIUS,
+                "state_class": SensorStateClass.MEASUREMENT,
             },
-            'humidity': {
-                'icon': 'mdi:water-percent',
-                'state': self.humidity,
-                'class': SensorDeviceClass.HUMIDITY,
-                'unit': PERCENTAGE,
-                "state_class": SensorStateClass.MEASUREMENT
+            "humidity": {
+                "icon": "mdi:water-percent",
+                "state": self.humidity,
+                "class": SensorDeviceClass.HUMIDITY,
+                "unit": PERCENTAGE,
+                "state_class": SensorStateClass.MEASUREMENT,
             },
             "error": {
                 "icon": "mdi:alert-circle",

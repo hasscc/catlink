@@ -1,9 +1,12 @@
 """Device module for CatLink integration."""
 
+from typing import TYPE_CHECKING
 
 from ..const import _LOGGER
+from ..models.additional_cfg import AdditionalDeviceConfig
 
-from .devices_coordinator import DevicesCoordinator
+if TYPE_CHECKING:
+    from .devices_coordinator import DevicesCoordinator
 
 
 class Device:
@@ -11,8 +14,14 @@ class Device:
 
     data: dict
 
-    def __init__(self, dat: dict, coordinator: "DevicesCoordinator") -> None:
+    def __init__(
+        self,
+        dat: dict,
+        coordinator: "DevicesCoordinator",
+        additional_config: AdditionalDeviceConfig = None,
+    ) -> None:
         """Initialize the device."""
+        self.additional_config = additional_config or AdditionalDeviceConfig()
         self.coordinator = coordinator
         self.account = coordinator.account
         self.listeners = {}

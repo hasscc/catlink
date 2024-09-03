@@ -2,6 +2,7 @@
 
 from collections import deque
 import datetime
+from typing import TYPE_CHECKING
 
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
@@ -9,7 +10,8 @@ from ..const import _LOGGER, DOMAIN
 from ..models.additional_cfg import AdditionalDeviceConfig
 from .device import Device
 
-from .devices_coordinator import DevicesCoordinator
+if TYPE_CHECKING:
+    from .devices_coordinator import DevicesCoordinator
 
 
 class LitterBox(Device):
@@ -25,12 +27,12 @@ class LitterBox(Device):
         additional_config: AdditionalDeviceConfig = None,
     ) -> None:
         """Initialize the litter box."""
-        super().__init__(dat, coordinator)
+        super().__init__(dat, coordinator, additional_config)
         self.logs = []
         self._litter_weight_during_day = deque(
-            maxlen=additional_config.max_samples_litter or 24
+            maxlen=self.additional_config.max_samples_litter or 24
         )
-        self.empty_litter_box_weight = additional_config.empty_weight or 0.0
+        self.empty_litter_box_weight = self.additional_config.empty_weight or 0.0
 
     async def async_init(self) -> None:
         """Initialize the litter box."""
