@@ -12,18 +12,24 @@ jobs:
 
     steps:
       - uses: actions/checkout@v1
+
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v1
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Set PY env
-        run: echo "::set-env name=PY::$(python -VV | sha256sum | cut -d' ' -f1)"
+      - name: Create and activate virtual environment
+        run: |
+          python -m venv venv
+          source venv/bin/activate
 
       - name: Install dependencies
         run: |
+          source venv/bin/activate
           python -m pip install --upgrade pip
           pip install -r requirements.test.txt
+
       - name: Run pytest
         run: |
+          source venv/bin/activate
           pytest
