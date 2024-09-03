@@ -5,15 +5,12 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_component import EntityComponent
 
 from .const import _LOGGER, CONF_ACCOUNTS, DOMAIN, SCAN_INTERVAL, SUPPORTED_DOMAINS
-from .helpers import Helper
 from .modules.account import Account
 from .modules.devices_coordinator import DevicesCoordinator
 
-async_setup_accounts = Helper.async_setup_accounts
-
 
 async def async_setup(hass: HomeAssistant, hass_config: dict) -> bool:
-    """"""
+    """Set up the CatLink component."""
 
     hass.data.setdefault(DOMAIN, {})
     config = hass_config.get(DOMAIN) or {}
