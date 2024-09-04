@@ -2,6 +2,7 @@
 
 from homeassistant.const import CONF_DEVICES, CONF_PASSWORD, CONF_TOKEN
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.discovery import async_load_platform
 from homeassistant.helpers.entity_component import EntityComponent
 
 from .const import _LOGGER, CONF_ACCOUNTS, DOMAIN, SCAN_INTERVAL, SUPPORTED_DOMAINS
@@ -39,8 +40,6 @@ async def async_setup(hass: HomeAssistant, hass_config: dict) -> bool:
         hass.data[DOMAIN]["coordinators"][coordinator.name] = coordinator
 
     for platform in SUPPORTED_DOMAINS:
-        hass.async_create_task(
-            hass.helpers.discovery.async_load_platform(platform, DOMAIN, {}, config)
-        )
+        hass.async_create_task(async_load_platform(hass, platform, DOMAIN, {}, config))
 
     return True
