@@ -33,4 +33,4 @@ jobs:
       - name: Run pytest
         run: |
           source venv/bin/activate
-          pytest
+          pytest --asyncio-mode=auto --cov=custom_components/catlink --cov-report=term-missing --cov-report=html
