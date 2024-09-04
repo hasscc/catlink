@@ -1,6 +1,6 @@
 name: Python package
 
-on: [push]
+on: [push, pull_request]
 
 jobs:
   build:
@@ -11,10 +11,10 @@ jobs:
         python-version: [3.12.5]
 
     steps:
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@v2
 
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v1
+        uses: actions/setup-python@v2
         with:
           python-version: ${{ matrix.python-version }}
 
@@ -30,7 +30,27 @@ jobs:
           pip install -r requirements.dev.txt
           pip install -r requirements.test.txt
 
-      - name: Run pytest
+      - name: Run pytest and generate coverage report
         run: |
           source venv/bin/activate
-          pytest --asyncio-mode=auto --cov=custom_components/catlink --cov-report=term-missing --cov-report=html
+          pytest --asyncio-mode=auto --cov=custom_components/catlink --cov-report=term > coverage.txt
+
+      - name: Upload coverage as an artifact (optional)
+        uses: actions/upload-artifact@v2
+        with:
+          name: coverage-report
+          path: coverage.txt
+
+      - name: Comment on PR with coverage report
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const fs = require('fs');
+            const coverageReport = fs.readFileSync('coverage.txt', 'utf8');
+            github.rest.issues.createComment({
+              issue_number: context.payload.pull_request.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `### Coverage Report\n\`\`\`\n${coverageReport}\n\`\`\``
+            });
