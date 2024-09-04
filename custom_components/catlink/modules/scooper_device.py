@@ -33,7 +33,6 @@ class ScooperDevice(Device):
             maxlen=self.additional_config.max_samples_litter or 24
         )
         self._error_logs = deque(maxlen=20)
-        self.additional_config = additional_config
         self.empty_litter_box_weight = self.additional_config.empty_weight or 0.0
 
     async def async_init(self) -> None:
@@ -176,20 +175,14 @@ class ScooperDevice(Device):
             return False
 
     @property
-    def temperature(self):
-        try:
-            return float(self.detail.get("temperature", 0))
-        except Exception as exc:
-            _LOGGER.error("Get temperature failed: %s", exc)
-            return 0
+    def temperature(self) -> str:
+        """Return the temperature."""
+        return self.detail.get("temperature", "-")
 
     @property
-    def humidity(self):
-        try:
-            return float(self.detail.get("humidity", 0))
-        except Exception as exc:
-            _LOGGER.error("Get humidity failed: %s", exc)
-            return 0
+    def humidity(self) -> str:
+        """Return the humidity."""
+        return self.detail.get("humidity", "-")
 
     @property
     def error(self) -> str:
