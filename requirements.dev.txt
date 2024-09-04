@@ -1,0 +1,4 @@
+habluetooth==3.4.0
+hass-nabucasa==0.81.1
+home-assistant-bluetooth==1.12.2
+homeassistant==2024.9.0b2

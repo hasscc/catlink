@@ -1,4 +1,5 @@
 request_api:
+  name: Request API
   description: Request API
   target:
     entity:
@@ -6,17 +7,20 @@ request_api:
       domain: sensor
   fields:
     api:
+      name: API
       description: API path
       example: /token/device/union/list/sorted
       required: true
       selector:
         text:
     params:
+      name: Params
       description: Request params
       example: '{"key":"val"}'
       selector:
         object:
     method:
+      name: Method
       description: Request method
       default: GET
       example: GET
@@ -27,6 +31,7 @@ request_api:
             - POST
             - POST_GET
     throw:
+      name: Throw
       description: Throw result
       default: true
       example: true

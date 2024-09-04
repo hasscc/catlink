@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 from ..const import _LOGGER
 from ..models.additional_cfg import AdditionalDeviceConfig
 
-if TYPE_CHECKING:
+if TYPE_CHECKING: # pragma: no cover
     from .devices_coordinator import DevicesCoordinator
 
 
