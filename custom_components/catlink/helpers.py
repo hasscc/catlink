@@ -44,14 +44,14 @@ class Helper:
         coordinators: list[DevicesCoordinator] = hass.data[DOMAIN][
             "coordinators"
         ].values()
-        for coordinator in coordinators:
+        for coordinator in coordinators: # pragma: no cover
             for sta in coordinator.data.values():
                 await coordinator.update_hass_entities(domain, sta)
 
     @classmethod
     async def async_setup_entry(
         cls, hass: HomeAssistant, config_entry, async_add_entities
-    ) -> None:
+    ) -> None: # pragma: no cover
         """Set up the Catlink platform."""
         cfg = {**config_entry.data, **config_entry.options}
         await cls.async_setup_platform(

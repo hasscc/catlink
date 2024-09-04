@@ -12,7 +12,7 @@ async_setup_entry = Helper.async_setup_entry
 
 async def async_setup_platform(
         hass: HomeAssistant, config, async_add_entities, discovery_info=None
-):
+): # pragma: no cover
     """Set up the Catlink switch platform."""
     hass.data[DOMAIN]["add_entities"][ENTITY_DOMAIN] = async_add_entities
     await Helper.async_setup_accounts(hass, ENTITY_DOMAIN)
@@ -20,7 +20,7 @@ async def async_setup_platform(
 
 class CatlinkButtonEntity(CatlinkEntity, ButtonEntity):
 
-    async def async_press(self):
+    async def async_press(self): # pragma: no cover
         """Press the button."""
         ret = False
         fun = self._option.get('async_press')

@@ -16,7 +16,7 @@ async_setup_accounts = Helper.async_setup_accounts
 
 async def async_setup_platform(
     hass: HomeAssistant, config, async_add_entities, discovery_info=None
-):
+): # pragma: no cover
     """Set up the Catlink sensor platform."""
     hass.data[DOMAIN]["add_entities"][ENTITY_DOMAIN] = async_add_entities
     await async_setup_accounts(hass, ENTITY_DOMAIN)

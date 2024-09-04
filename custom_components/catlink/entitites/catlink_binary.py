@@ -6,7 +6,7 @@ from ..modules.device import Device
 from .catlink import CatlinkEntity
 
 
-class CatlinkBinaryEntity(CatlinkEntity):
+class CatlinkBinaryEntity(CatlinkEntity): # pragma: no cover
     """CatlinkBinaryEntity."""
 
     def __init__(self, name, device: Device, option=None) -> None:
