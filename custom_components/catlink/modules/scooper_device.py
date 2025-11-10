@@ -46,7 +46,7 @@ class ScooperDevice(Device):
             update_method=self.update_logs,
             update_interval=datetime.timedelta(minutes=1),
         )
-        await self.coordinator_logs.async_config_entry_first_refresh()
+        await self.coordinator_logs.async_refresh()
 
     @property
     def modes(self) -> dict:
