@@ -73,6 +73,16 @@ class LitterBox(Device):
         }
 
     @property
+    def box_full_levels(self) -> dict:
+        """Return the box full sensitivity levels."""
+        return {
+            "LEVEL_01": "Level 1",
+            "LEVEL_02": "Level 2",
+            "LEVEL_03": "Level 3",
+            "LEVEL_04": "Level 4",
+        }
+
+    @property
     def _last_log(self) -> dict:
         """Return the last log."""
         log = {}
@@ -300,6 +310,12 @@ class LitterBox(Device):
                 "async_select": self.changeBag,
                 "delay_update": 5,
             },
+            "box_full_sensitivity": {
+                "icon": "mdi:tune",
+                "options": list(self.box_full_levels.values()),
+                "state_attrs": self.box_full_sensitivity_attrs,
+                "async_select": self.select_box_full_sensitivity,
+            },
         }
 
     # Additional Attributes
@@ -362,6 +378,53 @@ class LitterBox(Device):
             _LOGGER.error("Got error attributes failed: %s", exc)
             return []
 
+    @property
+    def box_full_sensitivity(self) -> str:
+        """Return the box full sensitivity."""
+        sensitivity = self.detail.get("boxFullSensitivity", "")
+        # Try direct mapping first
+        mapped_value = self.box_full_levels.get(sensitivity)
+        if mapped_value:
+            _LOGGER.debug(
+                "Box full sensitivity mapped: %s -> %s", sensitivity, mapped_value
+            )
+            return mapped_value
+        # Try converting numeric format (e.g., "01" -> "LEVEL_01")
+        if sensitivity and isinstance(sensitivity, (str, int)):
+            try:
+                # If it's a number or numeric string, convert to LEVEL_XX format
+                if isinstance(sensitivity, str) and sensitivity.isdigit():
+                    level_key = f"LEVEL_{sensitivity.zfill(2)}"
+                elif isinstance(sensitivity, int):
+                    level_key = f"LEVEL_{str(sensitivity).zfill(2)}"
+                else:
+                    level_key = None
+                if level_key:
+                    mapped_value = self.box_full_levels.get(level_key)
+                    if mapped_value:
+                        _LOGGER.debug(
+                            "Box full sensitivity mapped (converted): %s -> %s -> %s",
+                            sensitivity,
+                            level_key,
+                            mapped_value,
+                        )
+                        return mapped_value
+            except (ValueError, AttributeError):
+                pass
+        _LOGGER.warning(
+            "Box full sensitivity not found in mapping: %s (type: %s, available: %s)",
+            sensitivity,
+            type(sensitivity).__name__,
+            list(self.box_full_levels.keys()),
+        )
+        return None
+
+    def box_full_sensitivity_attrs(self) -> dict:
+        """Return the box full sensitivity attributes."""
+        return {
+            "raw_level": self.detail.get("boxFullSensitivity"),
+        }
+
     # Actions
     async def update_logs(self) -> list:
         """Update the logs."""
@@ -404,6 +467,32 @@ class LitterBox(Device):
             return False
         await self.update_device_detail()
         _LOGGER.info("Select mode: %s", [rdt, pms])
+        return rdt
+
+    async def select_box_full_sensitivity(self, level, **kwargs) -> bool:
+        """Select the box full sensitivity level."""
+        api = "token/litterbox/boxFullSetting"
+        lvl = None
+        for k, v in self.box_full_levels.items():
+            if v == level:
+                lvl = k
+                break
+        if lvl is None:
+            _LOGGER.warning(
+                "Select box full sensitivity failed for %s in %s", level, self.box_full_levels
+            )
+            return False
+        pms = {
+            "deviceId": self.id,
+            "level": lvl,
+        }
+        rdt = await self.account.request(api, pms, "POST")
+        eno = rdt.get("returnCode", 0)
+        if eno:
+            _LOGGER.error("Select box full sensitivity failed: %s", [rdt, pms])
+            return False
+        await self.update_device_detail()
+        _LOGGER.info("Select box full sensitivity: %s", [rdt, pms])
         return rdt
 
     async def update_device_detail(self) -> dict:
