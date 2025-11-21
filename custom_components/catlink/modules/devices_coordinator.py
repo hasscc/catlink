@@ -3,18 +3,19 @@
 from homeassistant.const import CONF_DEVICES
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
-from .account import Account
-from .device import Device
 from ..binary_sensor import CatlinkBinarySensorEntity
 from ..button import CatlinkButtonEntity
 from ..const import _LOGGER, DOMAIN, SUPPORTED_DOMAINS
+from ..models.additional_cfg import AdditionalDeviceConfig
 from ..modules.feeder_device import FeederDevice
 from ..modules.litterbox import LitterBox
 from ..modules.scooper_device import ScooperDevice
+from ..modules.visual_pro_ultra_device import VisualProUltraDevice
 from ..select import CatlinkSelectEntity
 from ..sensor import CatlinkSensorEntity
 from ..switch import CatlinkSwitchEntity
-from ..models.additional_cfg import AdditionalDeviceConfig
+from .account import Account
+from .device import Device
 
 
 class DevicesCoordinator(DataUpdateCoordinator):
@@ -59,6 +60,8 @@ class DevicesCoordinator(DataUpdateCoordinator):
                         dvc = LitterBox(dat, self, additional_config)
                     case "FEEDER":
                         dvc = FeederDevice(dat, self, additional_config)
+                    case "VISUAL_PRO_ULTRA":  # Visual Pro Ultra
+                        dvc = VisualProUltraDevice(dat, self, additional_config)
                     case _:
                         dvc = Device(dat, self)
                 self.hass.data[DOMAIN][CONF_DEVICES][did] = dvc
