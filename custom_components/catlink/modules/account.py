@@ -23,6 +23,7 @@ from ..const import (
     CONF_PHONE,
     CONF_PHONE_IAC,
     CONF_SCAN_INTERVAL,
+    CONF_UPDATE_INTERVAL,
     DEFAULT_API_BASE,
     DOMAIN,
     RSA_PUBLIC_KEY,
@@ -43,7 +44,12 @@ class Account:
 
     def get_config(self, key, default=None) -> str:
         """Return the config of the account."""
-        return self._config.get(key, self.hass.data[DOMAIN]["config"].get(key, default))
+        val = self._config.get(key)
+        if val is not None:
+            return val
+        domain_data = self.hass.data.get(DOMAIN) or {}
+        global_config = domain_data.get("config") or {}
+        return global_config.get(key, default)
 
     @property
     def phone(self) -> str:
@@ -71,8 +77,12 @@ class Account:
     @property
     def update_interval(self) -> datetime.timedelta:
         """Return the update interval of the account. Default is 1 minute."""
-        scan_interval = self.get_config(CONF_SCAN_INTERVAL) or SCAN_INTERVAL
-        return Helper.calculate_update_interval(scan_interval)
+        interval = (
+            self.get_config(CONF_UPDATE_INTERVAL)
+            or self.get_config(CONF_SCAN_INTERVAL)
+            or SCAN_INTERVAL
+        )
+        return Helper.calculate_update_interval(interval)
 
     def api_url(self, api="") -> str:
         """Return the full url of the api."""
