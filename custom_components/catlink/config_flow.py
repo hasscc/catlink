@@ -18,6 +18,7 @@ from .const import (
     CONF_SCAN_INTERVAL,
     DEFAULT_API_BASE,
     DOMAIN,
+    _LOGGER,
 )
 from .modules.account import Account
 
@@ -84,6 +85,14 @@ class CatlinkConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """Validate credentials by logging in."""
         try:
             account = Account(hass, data)
-            return await account.async_login()
+            ok = await account.async_login()
+            if not ok:
+                _LOGGER.warning(
+                    "Config flow auth failed for %s-%s",
+                    data.get(CONF_PHONE_IAC),
+                    data.get(CONF_PHONE),
+                )
+            return ok
         except Exception:  # pragma: no cover - safety net
+            _LOGGER.exception("Config flow auth validation error")
             return False
