@@ -55,7 +55,7 @@ class CatlinkConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 vol.Optional(
                     CONF_SCAN_INTERVAL,
                     default="00:01:00",
-                ): cv.time_period_str,
+                ): cv.string,
             }
         )
 
