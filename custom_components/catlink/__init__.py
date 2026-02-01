@@ -1,5 +1,6 @@
 """The component."""
 
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_DEVICES, CONF_PASSWORD, CONF_TOKEN
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.discovery import async_load_platform
@@ -20,6 +21,7 @@ async def async_setup(hass: HomeAssistant, hass_config: dict) -> bool:
     hass.data[DOMAIN].setdefault(CONF_DEVICES, {})
     hass.data[DOMAIN].setdefault("coordinators", {})
     hass.data[DOMAIN].setdefault("add_entities", {})
+    hass.data[DOMAIN].setdefault("entries", {})
 
     component = EntityComponent(_LOGGER, DOMAIN, hass, SCAN_INTERVAL)
     hass.data[DOMAIN]["component"] = component
@@ -43,4 +45,52 @@ async def async_setup(hass: HomeAssistant, hass_config: dict) -> bool:
     for platform in SUPPORTED_DOMAINS:
         hass.async_create_task(async_load_platform(hass, platform, DOMAIN, {}, config))
 
+    if config and not hass.config_entries.async_entries(DOMAIN):
+        hass.async_create_task(
+            hass.config_entries.async_init(DOMAIN, context={"source": "import"}, data=config)
+        )
+
+    return True
+
+
+async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Set up CatLink from a config entry."""
+    hass.data.setdefault(DOMAIN, {})
+    hass.data[DOMAIN].setdefault("config", {})
+    hass.data[DOMAIN].setdefault(CONF_ACCOUNTS, {})
+    hass.data[DOMAIN].setdefault(CONF_DEVICES, {})
+    hass.data[DOMAIN].setdefault("coordinators", {})
+    hass.data[DOMAIN].setdefault("add_entities", {})
+    hass.data[DOMAIN].setdefault("entries", {})
+
+    cfg = {**entry.data, **entry.options}
+    if not cfg.get(CONF_PASSWORD) and not cfg.get(CONF_TOKEN):
+        return False
+
+    acc = Account(hass, cfg)
+    coordinator = DevicesCoordinator(acc)
+    await acc.async_check_auth()
+    await coordinator.async_refresh()
+
+    hass.data[DOMAIN][CONF_ACCOUNTS][acc.uid] = acc
+    hass.data[DOMAIN]["coordinators"][coordinator.name] = coordinator
+    hass.data[DOMAIN]["entries"][entry.entry_id] = acc.uid
+
+    await hass.config_entries.async_forward_entry_setups(entry, SUPPORTED_DOMAINS)
+    return True
+
+
+async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Unload a config entry."""
+    unload_ok = await hass.config_entries.async_unload_platforms(
+        entry, SUPPORTED_DOMAINS
+    )
+    if not unload_ok:
+        return False
+
+    uid = hass.data[DOMAIN].get("entries", {}).pop(entry.entry_id, None)
+    if uid:
+        hass.data[DOMAIN][CONF_ACCOUNTS].pop(uid, None)
+        coordinator_name = f"{DOMAIN}-{uid}-{CONF_DEVICES}"
+        hass.data[DOMAIN]["coordinators"].pop(coordinator_name, None)
     return True

@@ -9,7 +9,11 @@ from .const import DOMAIN
 from .entitites import CatlinkBinaryEntity
 from .helpers import Helper
 
-async_setup_entry = Helper.async_setup_entry
+
+async def async_setup_entry(hass, config_entry, async_add_entities):
+    """Set up Catlink switches from a config entry."""
+    cfg = {**config_entry.data, **config_entry.options}
+    await async_setup_platform(hass, cfg, async_add_entities)
 
 
 async def async_setup_platform(
