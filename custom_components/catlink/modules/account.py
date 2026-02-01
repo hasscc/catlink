@@ -40,7 +40,7 @@ class Account:
         """Initialize the account."""
         self._config = config
         self.hass = hass
-        self.http = aiohttp_client.async_create_clientsession(hass, auto_cleanup=False)
+        self.http = aiohttp_client.async_get_clientsession(hass)
 
     def _notify_auth_issue(self, message: str) -> None:
         """Notify auth issues to the user."""
@@ -120,8 +120,8 @@ class Account:
         else:
             kws["data"] = pms
         try:
-            req = await self.http.request(method, url, **kws)
-            return await req.json() or {}
+            async with self.http.request(method, url, **kws) as req:
+                return await req.json() or {}
         except (ClientConnectorError, TimeoutError) as exc:  # noqa: UP041
             _LOGGER.error("Request api failed: %s", [method, url, pms, exc])
         return {}
