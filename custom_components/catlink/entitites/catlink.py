@@ -1,7 +1,7 @@
 """The component."""
 
 from homeassistant.components import persistent_notification
-from homeassistant.helpers.device_registry import DeviceInfo
+from homeassistant.helpers.device_registry import CONNECTION_NETWORK_MAC, DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from ..const import _LOGGER, DOMAIN
@@ -20,16 +20,22 @@ class CatlinkEntity(CoordinatorEntity):
         self._device = device
         self._option = option or {}
         self._attr_name = f"{device.name} {name}".strip()
-        self._attr_device_id = f"{device.type}_{device.mac}"
+        device_uid = device.id or device.mac or f"{device.type}"
+        self._attr_device_id = f"{device_uid}"
         self._attr_unique_id = f"{self._attr_device_id}-{name}"
-        mac = device.mac[-4:] if device.mac else device.id
-        self.entity_id = f"{DOMAIN}.{device.type.lower()}_{mac}_{name}"
+        mac = device.mac[-4:] if device.mac else device.id or device_uid
+        device_type = (device.type or "device").lower()
+        self.entity_id = f"{DOMAIN}.{device_type}_{mac}_{name}"
         self._attr_icon = self._option.get("icon")
         self._attr_device_class = self._option.get("class")
         self._attr_unit_of_measurement = self._option.get("unit")
         self._attr_state_class = option.get("state_class")
+        device_connections = None
+        if device.mac:
+            device_connections = {(CONNECTION_NETWORK_MAC, device.mac)}
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, self._attr_device_id)},
+            connections=device_connections,
             name=device.name,
             model=device.model,
             manufacturer="CatLink",
