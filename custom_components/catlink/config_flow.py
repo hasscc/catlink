@@ -18,7 +18,6 @@ from .const import (
     CONF_SCAN_INTERVAL,
     DEFAULT_API_BASE,
     DOMAIN,
-    SCAN_INTERVAL,
 )
 from .modules.account import Account
 
@@ -53,7 +52,10 @@ class CatlinkConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 vol.Optional(CONF_PHONE_IAC, default="86"): cv.string,
                 vol.Optional(CONF_API_BASE, default=DEFAULT_API_BASE): cv.string,
                 vol.Optional(CONF_LANGUAGE, default="zh_CN"): cv.string,
-                vol.Optional(CONF_SCAN_INTERVAL, default=SCAN_INTERVAL): cv.time_period,
+                vol.Optional(
+                    CONF_SCAN_INTERVAL,
+                    default="00:01:00",
+                ): cv.time_period_str,
             }
         )
 
