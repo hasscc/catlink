@@ -53,7 +53,9 @@ class Account:
 
     def get_config(self, key, default=None) -> str:
         """Return the config of the account."""
-        return self._config.get(key, self.hass.data[DOMAIN]["config"].get(key, default))
+        domain_data = self.hass.data.get(DOMAIN, {})
+        base_config = domain_data.get("config", {})
+        return self._config.get(key, base_config.get(key, default))
 
     @property
     def phone(self) -> str:
