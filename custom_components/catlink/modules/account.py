@@ -11,6 +11,7 @@ from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import padding
 
+from homeassistant.components import persistent_notification
 from homeassistant.const import CONF_DEVICES, CONF_PASSWORD, CONF_TOKEN
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import aiohttp_client
@@ -40,6 +41,15 @@ class Account:
         self._config = config
         self.hass = hass
         self.http = aiohttp_client.async_create_clientsession(hass, auto_cleanup=False)
+
+    def _notify_auth_issue(self, message: str) -> None:
+        """Notify auth issues to the user."""
+        persistent_notification.create(
+            self.hass,
+            message,
+            title="CatLink authentication issue",
+            notification_id=f"{DOMAIN}-auth-{self.uid}",
+        )
 
     def get_config(self, key, default=None) -> str:
         """Return the config of the account."""
@@ -120,6 +130,9 @@ class Account:
         """Login the account."""
         if not self.password:
             _LOGGER.error("Login failed: no password configured for %s", self.phone)
+            self._notify_auth_issue(
+                f"Login failed for {self.uid}: password not configured."
+            )
             return False
         pms = {
             "platform": "ANDROID",
@@ -136,6 +149,7 @@ class Account:
         tok = rsp.get("data", {}).get("token")
         if not tok:
             _LOGGER.error("Login %s failed: %s", self.phone, [rsp, pms])
+            self._notify_auth_issue(f"Login failed for {self.uid}: invalid credentials.")
             return False
         self._config.update(
             {
@@ -183,6 +197,9 @@ class Account:
             if await self.async_login():
                 rsp = await self.request(api, {"type": "NONE"})
             else:
+                self._notify_auth_issue(
+                    f"Token expired for {self.uid}: re-authentication failed."
+                )
                 return []
         dls = rsp.get("data", {}).get(CONF_DEVICES) or []
         if not dls:
