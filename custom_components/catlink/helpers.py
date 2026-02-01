@@ -27,9 +27,13 @@ class Helper:
 
         """
 
+        if isinstance(update_interval_str, timedelta):
+            return update_interval_str
+
         return (
             timedelta(minutes=10)
             if not update_interval_str
+            or not isinstance(update_interval_str, str)
             or not re.match(r"^\d{2}:\d{2}:\d{2}$", update_interval_str)
             else timedelta(
                 hours=int(update_interval_str[:2]),

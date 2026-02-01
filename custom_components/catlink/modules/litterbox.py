@@ -435,7 +435,13 @@ class LitterBox(Device):
         rsp = None
         try:
             rsp = await self.account.request(api, pms)
-            rdt = rsp.get("data", {}).get("scooperLogTop5") or []
+            dat = rsp.get("data", {}) or {}
+            rdt = (
+                dat.get("litterboxLogTop5")
+                or dat.get("litterBoxLogTop5")
+                or dat.get("scooperLogTop5")
+                or []
+            )
         except (TypeError, ValueError) as exc:
             rdt = {}
             _LOGGER.error("Got device logs for %s failed: %s", self.name, exc)

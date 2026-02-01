@@ -54,6 +54,8 @@ class Account:
     def password(self) -> str:
         """Return the password of the account."""
         pwd = self._config.get(CONF_PASSWORD)
+        if not pwd:
+            return None
         if len(pwd) <= 16:
             pwd = self.encrypt_password(pwd)
         return pwd
@@ -116,6 +118,9 @@ class Account:
 
     async def async_login(self) -> bool:
         """Login the account."""
+        if not self.password:
+            _LOGGER.error("Login failed: no password configured for %s", self.phone)
+            return False
         pms = {
             "platform": "ANDROID",
             "internationalCode": self._config.get(CONF_PHONE_IAC),
@@ -177,6 +182,8 @@ class Account:
         if eno == 1002:  # Illegal token
             if await self.async_login():
                 rsp = await self.request(api, {"type": "NONE"})
+            else:
+                return []
         dls = rsp.get("data", {}).get(CONF_DEVICES) or []
         if not dls:
             _LOGGER.warning("Got devices for %s failed: %s", self.phone, rsp)
