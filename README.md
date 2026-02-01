@@ -27,11 +27,10 @@
 - [Installation](#installation)
   - [Easy way](#easy-way)
   - [Manually](#manually)
-  - [Configuration Example](#configuration-example)
 - [Supported Devices and Operations](#supported-devices-and-operations)
   - [Scooper SE](#supported-devices-and-operations)
   - [Scooper PRO](#supported-devices-and-operations)
-- [How to Configure?](#how-to-configure)
+- [Configuration (UI)](#configuration-ui)
   - [API Regions](#api-regions)
 - [Services (Optional)](#services-optional)
 - [How to contribute?](#how-to-contribute)
@@ -82,25 +81,6 @@ wget -O - https://get.hacs.vip | DOMAIN=catlink REPO_PATH=hasscc/catlink ARCHIVE
 2. Restart HA core
 3. Call this [`service: shell_command.update_catlink`](https://my.home-assistant.io/redirect/developer_call_service/?service=shell_command.update_catlink) in Developer Tools
 2. Restart HA core again
-
-### Configuration Example:
-
-```yaml
-catlink:
-  phone: "xxxxxx"
-  password: "xxxxxx"
-  phone_iac: 86 # Default
-  api_base: "https://app-usa.catlinks.cn/api/"
-  scan_interval: "00:00:10"
-  language: "en_GB"
-
-  # Multiple accounts (Optional)
-  accounts:
-    - username: 18866660001
-      password: password1
-    - username: 18866660002
-      password: password2
-```
 
 ## Supported Devices and Operations
 
@@ -159,36 +139,18 @@ catlink:
 
 </div>
 
-### How to Configure?
+### Configuration (UI)
 
 > ! Recommend sharing devices to another account, because you can keep only one login session, which means that you'll have to re-login to CATLINK each time your HA instance pulls the data.
 
-```yaml
-# configuration.yaml
+This integration is configured entirely from the Home Assistant UI. **No configuration.yaml entry is required.**
 
-catlink:
-  # Single account
-  phone: xxxxxxxxx # Username of Catlink APP (without country code)
-  password: xxxxxxxxxx # Password
-  phone_iac: 86 # Optional, International access code, default is 86 (China)
-  api_base: # Optional, default is China server: https://app.catlinks.cn/api/ (see API Regions)
-  scan_interval: # Optional, default is 00:01:00
-  language: "en_GB"
+1. Go to **Settings** → **Devices & Services** → **Add Integration**.
+2. Search for **CatLink** and select it.
+3. Enter your CatLINK account credentials and choose your region (see **API Regions** below).
+4. Submit to finish setup.
 
-  devices: # Optional
-    - name: "Scooper C1" # Optional 
-      mac: "AABBCCDDEE" # Optional
-      empty_weight: 3.0 # (Optional) Empty litterbox weight defaults to 0.0
-      max_samples_litter: 24 # (Optional) Number of samples to determinate whether cat is inside
-
-
-  # Multiple accounts
-  accounts:
-    - username: 18866660001
-      password: password1
-    - username: 18866660002
-      password: password2
-```
+If you have multiple accounts, repeat the steps above to add another integration entry.
 
 #### API Regions
 
