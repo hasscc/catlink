@@ -109,7 +109,9 @@ class Account:
             kws["data"] = pms
         try:
             req = await self.http.request(method, url, **kws)
-            return await req.json() or {}
+            result = await req.json() or {}
+            _LOGGER.debug("API response %s %s: %s", method, api, result)
+            return result
         except (ClientConnectorError, TimeoutError) as exc:  # noqa: UP041
             _LOGGER.error("Request api failed: %s", [method, url, pms, exc])
         return {}

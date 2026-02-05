@@ -73,6 +73,7 @@ class DevicesCoordinator(DataUpdateCoordinator):
         add = self.hass.data[DOMAIN]["add_entities"].get(domain)
         if not add or not hasattr(dvc, hdk):
             return
+        added_entity_ids: list[str] = []
         for k, cfg in getattr(dvc, hdk).items():
             key = f"{domain}.{k}.{dvc.id}"
             new = None
@@ -91,3 +92,10 @@ class DevicesCoordinator(DataUpdateCoordinator):
             if new:
                 self._subs[key] = new
                 add([new])
+                added_entity_ids.append(new.entity_id)
+        if added_entity_ids:
+            _LOGGER.info(
+                "Device %s entities: %s",
+                dvc.name,
+                added_entity_ids,
+            )
