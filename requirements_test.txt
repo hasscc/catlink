@@ -3,3 +3,5 @@ pytest>=8.0.0
 pytest-asyncio>=0.24.0
 pytest-homeassistant-custom-component>=0.13.300
 homeassistant>=2024.1.0
+phonenumbers>=8.13.0
+pydantic>=2.0
