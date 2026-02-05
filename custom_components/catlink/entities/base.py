@@ -22,7 +22,8 @@ class CatlinkEntity(CoordinatorEntity):
         self._name = name
         self._device = device
         self._option = option or {}
-        self._attr_name = f"{device.name} {name}".strip()
+        display_name = self._option.get("name", name)
+        self._attr_name = f"{device.name} {display_name}".strip()
         self._attr_device_id = f"{device.type}_{device.mac}"
         self._attr_unique_id = f"{self._attr_device_id}-{name}"
         mac = device.mac[-4:] if device.mac else device.id
