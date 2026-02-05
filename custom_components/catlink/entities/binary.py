@@ -1,9 +1,10 @@
-"""The component."""
+"""Binary entities for CatLink integration."""
 
+from homeassistant.components.binary_sensor import BinarySensorEntity
 from homeassistant.const import STATE_OFF, STATE_ON
 
-from ..modules.device import Device
-from .catlink import CatlinkEntity
+from ..devices.base import Device
+from .base import CatlinkEntity
 
 
 class CatlinkBinaryEntity(CatlinkEntity):
@@ -26,3 +27,7 @@ class CatlinkBinaryEntity(CatlinkEntity):
     def state(self) -> str:
         """Return the state of the entity."""
         return STATE_ON if self._attr_is_on else STATE_OFF
+
+
+class CatlinkBinarySensorEntity(CatlinkBinaryEntity, BinarySensorEntity):
+    """Binary sensor entity for CatLink."""

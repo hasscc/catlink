@@ -1,12 +1,14 @@
 """The component."""
 
+import asyncio
+
 from homeassistant.components import persistent_notification
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.util import slugify
 
 from ..const import _LOGGER, DOMAIN
-from ..modules.device import Device
+from ..devices.base import Device
 
 
 class CatlinkEntity(CoordinatorEntity):
@@ -47,6 +49,14 @@ class CatlinkEntity(CoordinatorEntity):
     def _handle_coordinator_update(self):
         self.update()
         self.async_write_ha_state()
+
+    async def _async_after_action(self, success: bool, delay: float | None = None) -> None:
+        """Run after an action: write state, optional delay, then coordinator refresh."""
+        if success:
+            self.async_write_ha_state()
+            if delay is not None:
+                await asyncio.sleep(delay)
+            self._handle_coordinator_update()
 
     def update(self) -> None:
         """Update the entity."""

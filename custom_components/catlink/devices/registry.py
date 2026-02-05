@@ -1,0 +1,29 @@
+"""Device registry for CatLink integration."""
+
+from typing import TYPE_CHECKING
+
+from .base import Device
+from .feeder import FeederDevice
+from .litterbox import LitterBox
+from .scooper import ScooperDevice
+
+if TYPE_CHECKING:
+    from ..models.additional_cfg import AdditionalDeviceConfig
+    from ..modules.devices_coordinator import DevicesCoordinator
+
+DEVICE_TYPES: dict[str, type[Device]] = {
+    "SCOOPER": ScooperDevice,
+    "LITTER_BOX_599": LitterBox,  # SCOOPER C1
+    "FEEDER": FeederDevice,
+}
+
+
+def create_device(
+    dat: dict,
+    coordinator: "DevicesCoordinator",
+    additional_config: "AdditionalDeviceConfig | None" = None,
+) -> Device:
+    """Create a device instance from API data."""
+    typ = dat.get("deviceType")
+    device_cls = DEVICE_TYPES.get(typ, Device)
+    return device_cls(dat, coordinator, additional_config)
