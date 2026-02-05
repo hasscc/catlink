@@ -3,6 +3,7 @@
 from homeassistant.components import persistent_notification
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
+from homeassistant.util import slugify
 
 from ..const import _LOGGER, DOMAIN
 from ..modules.device import Device
@@ -23,11 +24,12 @@ class CatlinkEntity(CoordinatorEntity):
         self._attr_device_id = f"{device.type}_{device.mac}"
         self._attr_unique_id = f"{self._attr_device_id}-{name}"
         mac = device.mac[-4:] if device.mac else device.id
-        self.entity_id = f"{DOMAIN}.{device.type.lower()}_{mac}_{name}"
+        object_id = f"{device.type}_{mac}_{name}"
+        self.entity_id = f"{DOMAIN}.{slugify(object_id)}"
         self._attr_icon = self._option.get("icon")
         self._attr_device_class = self._option.get("class")
-        self._attr_unit_of_measurement = self._option.get("unit")
-        self._attr_state_class = option.get("state_class")
+        self._attr_native_unit_of_measurement = self._option.get("unit")
+        self._attr_state_class = self._option.get("state_class")
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, self._attr_device_id)},
             name=device.name,
@@ -68,7 +70,7 @@ class CatlinkEntity(CoordinatorEntity):
         throw = kwargs.pop("throw", None)
         rdt = await self.account.request(api, params, method, **kwargs)
         if throw:
-            persistent_notification.create(
+            persistent_notification.async_create(
                 self.hass,
                 f"{rdt}",
                 f"Request: {api}",
