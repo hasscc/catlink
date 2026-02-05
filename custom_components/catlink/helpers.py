@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 import phonenumbers
 from phonenumbers import NumberParseException
 
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 
 from .const import (
@@ -19,8 +20,6 @@ from .const import (
 )
 
 if TYPE_CHECKING:
-    from homeassistant.config_entries import ConfigEntry
-
     from .modules.devices_coordinator import DevicesCoordinator
 
 
