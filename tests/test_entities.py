@@ -252,6 +252,69 @@ class TestCatlinkSelectEntity:
         assert entity._attr_current_option == "manual"
 
 
+class TestCatlinkSensorEntity:
+    """Tests for CatlinkSensorEntity."""
+
+    def test_sensor_initialization(
+        self, hass, mock_device, mock_coordinator
+    ) -> None:
+        """Test CatlinkSensorEntity initializes with sensor config."""
+        mock_device.coordinator = mock_coordinator
+        mock_device.error = "Normal"
+        entity = CatlinkSensorEntity(
+            "error",
+            mock_device,
+            {"icon": "mdi:alert", "state_attrs": lambda: {"key": "val"}},
+        )
+        entity.coordinator = mock_coordinator
+        entity.hass = hass
+
+        assert entity._name == "error"
+        assert entity._attr_icon == "mdi:alert"
+
+    def test_sensor_update_sets_state_and_attrs(
+        self, hass, mock_device, mock_coordinator
+    ) -> None:
+        """Test sensor update sets state and extra_state_attributes."""
+        mock_device.coordinator = mock_coordinator
+        mock_device.litter_remaining_days = 5
+        state_attrs = {"days_left": 5}
+
+        def get_attrs():
+            return state_attrs
+
+        entity = CatlinkSensorEntity(
+            "litter_remaining_days",
+            mock_device,
+            {"unit": "days", "state_attrs": get_attrs},
+        )
+        entity.coordinator = mock_coordinator
+        entity.hass = hass
+
+        entity.update()
+        assert entity._attr_state == 5
+        assert entity._attr_extra_state_attributes == {"days_left": 5}
+        assert entity._attr_native_unit_of_measurement == "days"
+
+    def test_sensor_update_without_state_attrs(
+        self, hass, mock_device, mock_coordinator
+    ) -> None:
+        """Test sensor update when option has no state_attrs."""
+        mock_device.coordinator = mock_coordinator
+        mock_device.litter_weight = 2.5
+        entity = CatlinkSensorEntity(
+            "litter_weight",
+            mock_device,
+            {"unit": "kg"},
+        )
+        entity.coordinator = mock_coordinator
+        entity.hass = hass
+
+        entity.update()
+        assert entity._attr_state == 2.5
+        assert entity._attr_native_unit_of_measurement == "kg"
+
+
 class TestCatlinkSwitchEntity:
     """Tests for CatlinkSwitchEntity."""
 

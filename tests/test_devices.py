@@ -1,6 +1,6 @@
 """Tests for CatLink device classes."""
 
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -222,9 +222,7 @@ class TestLitterBox:
         assert result is not None
         assert "2023" in result or "2024" in result
 
-    def test_last_sync_no_timestamp(
-        self, mock_coordinator, sample_device_data
-    ) -> None:
+    def test_last_sync_no_timestamp(self, mock_coordinator, sample_device_data) -> None:
         """Test LitterBox last_sync returns None when no timestamp."""
         device = LitterBox(sample_device_data, mock_coordinator)
         device.detail = {}
@@ -305,6 +303,123 @@ class TestLitterBox:
         assert "garbage" in select
         assert "box_full_sensitivity" in select
         assert select["mode"]["options"] == ["auto", "manual", "time"]
+
+
+class TestLitterBoxAsyncMethods:
+    """Tests for LitterBox async methods."""
+
+    @pytest.mark.usefixtures("enable_custom_integrations")
+    async def test_select_mode_success(
+        self, mock_coordinator, sample_device_data
+    ) -> None:
+        """Test select_mode succeeds and updates device detail."""
+        device = LitterBox(sample_device_data, mock_coordinator)
+        device.detail = {}
+        mock_coordinator.account.request = AsyncMock(
+            return_value={"returnCode": 0, "data": {}}
+        )
+        device.update_device_detail = AsyncMock(return_value={})
+
+        result = await device.select_mode("auto")
+
+        assert result is not False
+        mock_coordinator.account.request.assert_called_once()
+        call_args = mock_coordinator.account.request.call_args
+        assert call_args[0][0] == "token/litterbox/changeMode"
+        assert call_args[0][1]["workModel"] == "00"
+        assert call_args[0][1]["deviceId"] == "dev123"
+        device.update_device_detail.assert_called_once()
+
+    @pytest.mark.usefixtures("enable_custom_integrations")
+    async def test_select_mode_invalid_returns_false(
+        self, mock_coordinator, sample_device_data
+    ) -> None:
+        """Test select_mode returns False for invalid mode."""
+        device = LitterBox(sample_device_data, mock_coordinator)
+        result = await device.select_mode("invalid_mode")
+        assert result is False
+
+    @pytest.mark.usefixtures("enable_custom_integrations")
+    async def test_select_mode_api_error_sets_action_error(
+        self, mock_coordinator, sample_device_data
+    ) -> None:
+        """Test select_mode sets action error on API failure."""
+        device = LitterBox(sample_device_data, mock_coordinator)
+        mock_coordinator.account.request = AsyncMock(
+            return_value={"returnCode": 4007, "msg": "Device busy"}
+        )
+
+        result = await device.select_mode("auto")
+
+        assert result is False
+        assert "Device busy" in device.error
+
+    @pytest.mark.usefixtures("enable_custom_integrations")
+    async def test_select_action_success(
+        self, mock_coordinator, sample_device_data
+    ) -> None:
+        """Test select_action succeeds for Cleaning."""
+        device = LitterBox(sample_device_data, mock_coordinator)
+        mock_coordinator.account.request = AsyncMock(return_value={"returnCode": 0})
+        device.update_device_detail = AsyncMock(return_value={})
+
+        result = await device.select_action("Cleaning")
+
+        assert result is not False
+        mock_coordinator.account.request.assert_called_once()
+        assert mock_coordinator.account.request.call_args[0][1]["cmd"] == "01"
+
+    @pytest.mark.usefixtures("enable_custom_integrations")
+    async def test_select_action_garbage_bag_calls_change_bag(
+        self, mock_coordinator, sample_device_data
+    ) -> None:
+        """Test select_action with Garbage Bag delegates to changeBag."""
+        device = LitterBox(sample_device_data, mock_coordinator)
+        device.changeBag = AsyncMock(return_value=True)
+
+        result = await device.select_action("Change Garbage Bag")
+
+        assert result is True
+        device.changeBag.assert_called_once()
+
+    @pytest.mark.usefixtures("enable_custom_integrations")
+    async def test_change_bag_success(
+        self, mock_coordinator, sample_device_data
+    ) -> None:
+        """Test changeBag succeeds with Change Bag mode."""
+        device = LitterBox(sample_device_data, mock_coordinator)
+        mock_coordinator.account.request = AsyncMock(return_value={"returnCode": 0})
+        device.update_device_detail = AsyncMock(return_value={})
+
+        result = await device.changeBag("Change Bag")
+
+        assert result is not False
+        mock_coordinator.account.request.assert_called_once()
+        assert mock_coordinator.account.request.call_args[0][1]["enable"] == "1"
+
+    @pytest.mark.usefixtures("enable_custom_integrations")
+    async def test_select_box_full_sensitivity_success(
+        self, mock_coordinator, sample_device_data
+    ) -> None:
+        """Test select_box_full_sensitivity succeeds."""
+        device = LitterBox(sample_device_data, mock_coordinator)
+        mock_coordinator.account.request = AsyncMock(return_value={"returnCode": 0})
+        device.update_device_detail = AsyncMock(return_value={})
+
+        result = await device.select_box_full_sensitivity("Level 1")
+
+        assert result is not False
+        mock_coordinator.account.request.assert_called_once()
+        assert mock_coordinator.account.request.call_args[0][1]["level"] == "LEVEL_01"
+
+    @pytest.mark.usefixtures("enable_custom_integrations")
+    async def test_select_box_full_sensitivity_invalid_returns_false(
+        self, mock_coordinator, sample_device_data
+    ) -> None:
+        """Test select_box_full_sensitivity returns False for invalid level."""
+        device = LitterBox(sample_device_data, mock_coordinator)
+        result = await device.select_box_full_sensitivity("Invalid Level")
+        assert result is False
 
 
 class TestFeederDevice:

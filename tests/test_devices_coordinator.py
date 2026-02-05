@@ -54,7 +54,9 @@ class TestDevicesCoordinatorInit:
         """Test coordinator name includes domain and uid."""
         assert coordinator.name == f"{DOMAIN}-{mock_account.uid}-devices"
 
-    def test_init_parses_additional_config(self, mock_account, coordinator_hass_data) -> None:
+    def test_init_parses_additional_config(
+        self, mock_account, coordinator_hass_data
+    ) -> None:
         """Test coordinator parses additional device config."""
         coordinator_hass_data["config"]["devices"] = [
             {"mac": "AA:BB:CC:DD:EE:FF", "empty_weight": 1.5},

@@ -176,6 +176,7 @@ class TestAccountEncryptPassword:
         assert len(result) > 0
         try:
             import base64
+
             base64.b64decode(result)
         except Exception:
             pytest.fail("Result should be valid base64")
@@ -262,9 +263,7 @@ class TestAccountAsyncLogin:
     @pytest.mark.usefixtures("enable_custom_integrations")
     async def test_login_success(self, account) -> None:
         """Test async_login succeeds with valid token in response."""
-        with patch.object(
-            account, "request", new_callable=AsyncMock
-        ) as mock_request:
+        with patch.object(account, "request", new_callable=AsyncMock) as mock_request:
             with patch.object(
                 account, "async_check_auth", new_callable=AsyncMock
             ) as mock_check:
@@ -281,9 +280,7 @@ class TestAccountAsyncLogin:
     @pytest.mark.usefixtures("enable_custom_integrations")
     async def test_login_fails_no_token(self, account) -> None:
         """Test async_login returns False when no token in response."""
-        with patch.object(
-            account, "request", new_callable=AsyncMock
-        ) as mock_request:
+        with patch.object(account, "request", new_callable=AsyncMock) as mock_request:
             mock_request.return_value = {"data": {}, "returnCode": 0}
             result = await account.async_login()
 
@@ -297,9 +294,7 @@ class TestAccountGetDevices:
     @pytest.mark.usefixtures("enable_custom_integrations")
     async def test_get_devices_returns_list(self, account) -> None:
         """Test get_devices returns device list from API."""
-        with patch.object(
-            account, "request", new_callable=AsyncMock
-        ) as mock_request:
+        with patch.object(account, "request", new_callable=AsyncMock) as mock_request:
             mock_request.return_value = {
                 "returnCode": 0,
                 "data": {
@@ -314,7 +309,9 @@ class TestAccountGetDevices:
             mock_request.assert_called_once()
 
     @pytest.mark.usefixtures("enable_custom_integrations")
-    async def test_get_devices_login_when_no_token(self, hass, mock_http_session) -> None:
+    async def test_get_devices_login_when_no_token(
+        self, hass, mock_http_session
+    ) -> None:
         """Test get_devices calls async_login when token is empty."""
         config = {
             CONF_PHONE_IAC: "86",
@@ -330,3 +327,99 @@ class TestAccountGetDevices:
 
             assert devices == []
             mock_login.assert_called_once()
+
+
+class TestAccountAsyncCheckAuth:
+    """Tests for Account async_check_auth."""
+
+    @pytest.mark.usefixtures("enable_custom_integrations")
+    async def test_check_auth_save_stores_token(self, account) -> None:
+        """Test async_check_auth with save=True stores token to Store."""
+        with patch(
+            "custom_components.catlink.modules.account.Store"
+        ) as mock_store_cls:
+            mock_store = MagicMock()
+            mock_store.async_load = AsyncMock(return_value={})
+            mock_store.async_save = AsyncMock()
+            mock_store_cls.return_value = mock_store
+
+            result = await account.async_check_auth(save=True)
+
+            assert result[CONF_PHONE] == "13812345678"
+            assert result[CONF_TOKEN] == "existing-token"
+            mock_store.async_save.assert_called_once()
+            saved = mock_store.async_save.call_args[0][0]
+            assert saved[CONF_TOKEN] == "existing-token"
+
+    @pytest.mark.usefixtures("enable_custom_integrations")
+    async def test_check_auth_load_restores_token_from_store(
+        self, account
+    ) -> None:
+        """Test async_check_auth loads token from Store when present."""
+        with patch(
+            "custom_components.catlink.modules.account.Store"
+        ) as mock_store_cls:
+            mock_store = MagicMock()
+            mock_store.async_load = AsyncMock(
+                return_value={CONF_PHONE: "13812345678", CONF_TOKEN: "stored-token"}
+            )
+            mock_store_cls.return_value = mock_store
+
+            with patch.object(
+                account, "async_login", new_callable=AsyncMock
+            ) as mock_login:
+                result = await account.async_check_auth(save=False)
+
+                assert account.token == "stored-token"
+                mock_login.assert_not_called()
+                assert result[CONF_TOKEN] == "stored-token"
+
+    @pytest.mark.usefixtures("enable_custom_integrations")
+    async def test_check_auth_calls_login_when_store_empty(
+        self, account
+    ) -> None:
+        """Test async_check_auth calls async_login when Store has no token."""
+        with patch(
+            "custom_components.catlink.modules.account.Store"
+        ) as mock_store_cls:
+            mock_store = MagicMock()
+            mock_store.async_load = AsyncMock(return_value={})
+            mock_store_cls.return_value = mock_store
+
+            with patch.object(
+                account, "async_login", new_callable=AsyncMock
+            ) as mock_login:
+                mock_login.return_value = True
+                await account.async_check_auth(save=False)
+
+                mock_login.assert_called_once()
+
+
+class TestAccountRequestErrors:
+    """Tests for Account request error handling."""
+
+    @pytest.mark.usefixtures("enable_custom_integrations")
+    async def test_request_returns_empty_on_connector_error(self, account) -> None:
+        """Test request returns empty dict on ClientConnectorError."""
+        from aiohttp import ClientConnectorError
+
+        async def mock_request_fail(*args, **kwargs):
+            raise ClientConnectorError(MagicMock(), OSError("Connection refused"))
+
+        account.http.request = mock_request_fail
+
+        result = await account.request("token/device/list")
+
+        assert result == {}
+
+    @pytest.mark.usefixtures("enable_custom_integrations")
+    async def test_request_returns_empty_on_timeout(self, account) -> None:
+        """Test request returns empty dict on TimeoutError."""
+        async def mock_request_timeout(*args, **kwargs):
+            raise TimeoutError("Request timed out")
+
+        account.http.request = mock_request_timeout
+
+        result = await account.request("token/device/list")
+
+        assert result == {}
