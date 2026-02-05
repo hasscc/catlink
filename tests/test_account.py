@@ -423,3 +423,17 @@ class TestAccountRequestErrors:
         result = await account.request("token/device/list")
 
         assert result == {}
+
+    @pytest.mark.usefixtures("enable_custom_integrations")
+    async def test_request_returns_empty_when_json_is_none(self, account) -> None:
+        """Test request returns empty dict when response json is None."""
+        async def mock_request_json_none(*args, **kwargs):
+            resp = MagicMock()
+            resp.json = AsyncMock(return_value=None)
+            return resp
+
+        account.http.request = mock_request_json_none
+
+        result = await account.request("token/device/list")
+
+        assert result == {}

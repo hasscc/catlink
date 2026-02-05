@@ -1,11 +1,15 @@
 """Tests for CatLink helper functions."""
 
 from datetime import timedelta
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from custom_components.catlink.const import DOMAIN
 from custom_components.catlink.helpers import (
     Helper,
+    async_setup_domain_platform,
+    discover_region,
     format_api_error,
     parse_phone_number,
 )
@@ -104,3 +108,82 @@ class TestCalculateUpdateInterval:
         """Test zero or negative returns 1 minute default."""
         assert Helper.calculate_update_interval(0) == timedelta(minutes=1)
         assert Helper.calculate_update_interval(-10) == timedelta(minutes=1)
+
+
+class TestDiscoverRegion:
+    """Tests for discover_region."""
+
+    @pytest.mark.usefixtures("enable_custom_integrations")
+    async def test_discover_region_returns_region_on_login_success(self, hass) -> None:
+        """Test discover_region returns region when login succeeds."""
+        with patch(
+            "custom_components.catlink.modules.account.Account"
+        ) as mock_account_cls:
+            mock_account = MagicMock()
+            mock_account.async_login = AsyncMock(return_value=True)
+            mock_account_cls.return_value = mock_account
+
+            result = await discover_region(hass, "86", "13812345678", "testpass")
+
+            assert result == "global"
+            mock_account.async_login.assert_called_once()
+
+    @pytest.mark.usefixtures("enable_custom_integrations")
+    async def test_discover_region_returns_none_when_all_fail(self, hass) -> None:
+        """Test discover_region returns None when no region succeeds."""
+        with patch(
+            "custom_components.catlink.modules.account.Account"
+        ) as mock_account_cls:
+            mock_account = MagicMock()
+            mock_account.async_login = AsyncMock(return_value=False)
+            mock_account_cls.return_value = mock_account
+
+            result = await discover_region(hass, "86", "13812345678", "wrongpass")
+
+            assert result is None
+
+
+class TestAsyncSetupDomainPlatform:
+    """Tests for async_setup_domain_platform."""
+
+    @pytest.mark.usefixtures("enable_custom_integrations")
+    async def test_async_setup_domain_platform_registers_add_entities(
+        self, hass
+    ) -> None:
+        """Test async_setup_domain_platform registers add_entities."""
+        hass.data[DOMAIN] = {
+            "add_entities": {},
+            "coordinators": {},
+        }
+        add_entities = MagicMock()
+
+        with patch(
+            "custom_components.catlink.helpers.Helper.async_setup_accounts",
+            new_callable=AsyncMock,
+        ) as mock_setup:
+            await async_setup_domain_platform(hass, "sensor", add_entities)
+
+            assert "discovery" in hass.data[DOMAIN]["add_entities"]
+            assert (
+                hass.data[DOMAIN]["add_entities"]["discovery"]["sensor"] == add_entities
+            )
+            mock_setup.assert_called_once_with(hass, "sensor")
+
+    @pytest.mark.usefixtures("enable_custom_integrations")
+    async def test_async_setup_domain_platform_calls_extra_setup(self, hass) -> None:
+        """Test async_setup_domain_platform calls extra_setup when provided."""
+        hass.data[DOMAIN] = {
+            "add_entities": {},
+            "coordinators": {},
+        }
+        extra_setup = AsyncMock()
+
+        with patch(
+            "custom_components.catlink.helpers.Helper.async_setup_accounts",
+            new_callable=AsyncMock,
+        ):
+            await async_setup_domain_platform(
+                hass, "sensor", MagicMock(), extra_setup=extra_setup
+            )
+
+            extra_setup.assert_called_once()

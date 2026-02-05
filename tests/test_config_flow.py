@@ -2,6 +2,7 @@
 
 from unittest.mock import AsyncMock, patch
 
+from custom_components.catlink.config_flow import _device_label
 from custom_components.catlink.const import (
     CONF_DEVICE_IDS,
     CONF_PHONE,
@@ -16,6 +17,39 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 from homeassistant import data_entry_flow
 from homeassistant.config_entries import SOURCE_REAUTH, SOURCE_USER
 from homeassistant.core import HomeAssistant
+
+
+class TestDeviceLabel:
+    """Tests for _device_label helper."""
+
+    def test_device_label_with_name_and_model(self) -> None:
+        """Test label when device has name and model."""
+        dat = {
+            "deviceName": "Living Room",
+            "model": "LB599",
+            "deviceType": "LITTER_BOX_599",
+        }
+        assert _device_label(dat, True) == "Living Room (LB599) - Supported"
+        assert _device_label(dat, False) == "Living Room (LB599) - Limited support"
+
+    def test_device_label_name_equals_model(self) -> None:
+        """Test label when name equals model uses deviceType."""
+        dat = {
+            "deviceName": "LB599",
+            "model": "LB599",
+            "deviceType": "LITTER_BOX_599",
+        }
+        assert _device_label(dat, True) == "LB599 (LITTER_BOX_599) - Supported"
+
+    def test_device_label_fallback_to_model(self) -> None:
+        """Test label falls back to model when deviceName missing."""
+        dat = {"model": "LB599", "deviceType": "LITTER_BOX_599"}
+        assert _device_label(dat, True) == "LB599 (LITTER_BOX_599) - Supported"
+
+    def test_device_label_fallback_to_unknown(self) -> None:
+        """Test label falls back to Unknown when name and model missing."""
+        dat = {"deviceType": "UNKNOWN"}
+        assert _device_label(dat, True) == "Unknown (UNKNOWN) - Supported"
 
 
 @pytest.fixture(autouse=True)

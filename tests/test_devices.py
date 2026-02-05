@@ -492,6 +492,95 @@ class TestFeederDevice:
         assert button["feed"]["async_press"] == device.food_out
 
 
+class TestFeederDeviceAsyncMethods:
+    """Tests for FeederDevice async methods."""
+
+    @pytest.mark.usefixtures("enable_custom_integrations")
+    async def test_food_out_success(self, mock_coordinator, sample_feeder_data) -> None:
+        """Test food_out succeeds and updates device detail."""
+        device = FeederDevice(sample_feeder_data, mock_coordinator)
+        mock_coordinator.account.request = AsyncMock(return_value={"returnCode": 0})
+        device.update_device_detail = AsyncMock(return_value={})
+
+        result = await device.food_out()
+
+        assert result is not False
+        mock_coordinator.account.request.assert_called_once()
+        call_args = mock_coordinator.account.request.call_args
+        assert call_args[0][0] == "token/device/feeder/foodOut"
+        assert call_args[0][1]["footOutNum"] == 5
+        assert call_args[0][1]["deviceId"] == "feeder1"
+        device.update_device_detail.assert_called_once()
+
+    @pytest.mark.usefixtures("enable_custom_integrations")
+    async def test_food_out_api_error_sets_action_error(
+        self, mock_coordinator, sample_feeder_data
+    ) -> None:
+        """Test food_out sets action error on API failure."""
+        device = FeederDevice(sample_feeder_data, mock_coordinator)
+        mock_coordinator.account.request = AsyncMock(
+            return_value={"returnCode": 500, "msg": "Device busy"}
+        )
+
+        result = await device.food_out()
+
+        assert result is False
+        assert "Device busy" in (device._action_error or "")
+
+    @pytest.mark.usefixtures("enable_custom_integrations")
+    async def test_update_device_detail_success(
+        self, mock_coordinator, sample_feeder_data
+    ) -> None:
+        """Test FeederDevice update_device_detail parses response."""
+        device = FeederDevice(sample_feeder_data, mock_coordinator)
+        device._handle_listeners = MagicMock()
+        mock_coordinator.account.request = AsyncMock(
+            return_value={
+                "data": {
+                    "deviceInfo": {
+                        "foodOutStatus": "idle",
+                        "weight": 250,
+                    }
+                }
+            }
+        )
+
+        result = await device.update_device_detail()
+
+        assert result["foodOutStatus"] == "idle"
+        assert result["weight"] == 250
+        assert device.detail == result
+        device._handle_listeners.assert_called_once()
+
+
+class TestScooperDeviceAsyncMethods:
+    """Tests for ScooperDevice async methods."""
+
+    @pytest.mark.usefixtures("enable_custom_integrations")
+    async def test_update_logs_fetches_from_api(
+        self, mock_coordinator, sample_scooper_data
+    ) -> None:
+        """Test ScooperDevice update_logs calls correct API."""
+        device = ScooperDevice(sample_scooper_data, mock_coordinator)
+        device._handle_listeners = MagicMock()
+        mock_coordinator.account.request = AsyncMock(
+            return_value={
+                "data": {
+                    "scooperLogTop5": [
+                        {"time": "10:00", "event": "Cleaning"},
+                    ]
+                }
+            }
+        )
+
+        result = await device.update_logs()
+
+        assert len(result) == 1
+        mock_coordinator.account.request.assert_called_once_with(
+            "token/device/scooper/stats/log/top5", {"deviceId": "scooper1"}
+        )
+
+
 class TestScooperDevice:
     """Tests for ScooperDevice."""
 
