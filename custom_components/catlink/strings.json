@@ -10,7 +10,7 @@
     },
     "step": {
       "user": {
-        "description": "You must use a different account than the one on the mobile app. Use the share feature in the app to create a dedicated account for Home Assistant, because only one instance can be logged in per account at a time. Enter your full phone number with country code (e.g. +381658646688).",
+        "description": "You must use a different account than the one on the mobile app. Use the share feature in the app to create a dedicated account for Home Assistant, because only one instance can be logged in per account at a time. Enter your full phone number with country code (e.g. +447911123456).",
         "data": {
           "phone": "Phone number",
           "password": "Password"

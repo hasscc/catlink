@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 import phonenumbers
 from phonenumbers import NumberParseException
 
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 
 from .const import (
@@ -19,8 +20,6 @@ from .const import (
 )
 
 if TYPE_CHECKING:
-    from homeassistant.config_entries import ConfigEntry
-
     from .modules.devices_coordinator import DevicesCoordinator
 
 
@@ -46,7 +45,7 @@ async def async_setup_domain_platform(
 def parse_phone_number(phone: str) -> tuple[str, str]:
     """Parse a full phone number into country code and national number.
 
-    Accepts formats like +381658646688, 381658646688, or 0658646688.
+    Accepts formats like +447911123456, 447911123456, or 07911123456.
     Returns (phone_iac, phone_number) for CatLink API.
     """
     cleaned = re.sub(r"[\s\-\.\(\)]", "", str(phone).strip())
