@@ -205,6 +205,107 @@ class TestLitterBox:
         device.detail = {"deviceErrorList": [{"errkey": "left_knob_abnormal"}]}
         assert device.knob_status == "Empty Mode"
 
+    def test_garbage_actions(self, mock_coordinator, sample_device_data) -> None:
+        """Test LitterBox garbage_actions property."""
+        device = LitterBox(sample_device_data, mock_coordinator)
+        actions = device.garbage_actions
+        assert actions["00"] == "Change Bag"
+        assert actions["01"] == "Reset"
+
+    def test_last_sync_with_timestamp(
+        self, mock_coordinator, sample_device_data
+    ) -> None:
+        """Test LitterBox last_sync formats timestamp."""
+        device = LitterBox(sample_device_data, mock_coordinator)
+        device.detail = {"lastHeartBeatTimestamp": 1700000000000}
+        result = device.last_sync
+        assert result is not None
+        assert "2023" in result or "2024" in result
+
+    def test_last_sync_no_timestamp(
+        self, mock_coordinator, sample_device_data
+    ) -> None:
+        """Test LitterBox last_sync returns None when no timestamp."""
+        device = LitterBox(sample_device_data, mock_coordinator)
+        device.detail = {}
+        assert device.last_sync is None
+
+    def test_garbage_tobe_status_normal(
+        self, mock_coordinator, sample_device_data
+    ) -> None:
+        """Test LitterBox garbage_tobe_status when no full error."""
+        device = LitterBox(sample_device_data, mock_coordinator)
+        device.detail = {"deviceErrorList": []}
+        assert device.garbage_tobe_status == "Normal"
+
+    def test_garbage_tobe_status_full(
+        self, mock_coordinator, sample_device_data
+    ) -> None:
+        """Test LitterBox garbage_tobe_status when garbage full."""
+        device = LitterBox(sample_device_data, mock_coordinator)
+        device.detail = {"deviceErrorList": [{"errkey": "garbage_tobe_full_abnormal"}]}
+        assert device.garbage_tobe_status == "Full"
+
+    def test_garbage_attrs(self, mock_coordinator, sample_device_data) -> None:
+        """Test LitterBox garbage_attrs maps garbageStatus."""
+        device = LitterBox(sample_device_data, mock_coordinator)
+        device.detail = {"garbageStatus": "00"}
+        assert device.garbage_attrs()["status"] == "Normal"
+
+        device.detail = {"garbageStatus": "02"}
+        assert device.garbage_attrs()["status"] == "Movement Started"
+
+        device.detail = {"garbageStatus": "03"}
+        assert device.garbage_attrs()["status"] == "Moving"
+
+    def test_error_attrs(self, mock_coordinator, sample_device_data) -> None:
+        """Test LitterBox error_attrs returns deviceErrorList."""
+        device = LitterBox(sample_device_data, mock_coordinator)
+        device.detail = {"deviceErrorList": [{"errkey": "test"}]}
+        attrs = device.error_attrs()
+        assert "errors" in attrs
+        assert attrs["errors"] == [{"errkey": "test"}]
+
+    def test_box_full_sensitivity_mapped(
+        self, mock_coordinator, sample_device_data
+    ) -> None:
+        """Test LitterBox box_full_sensitivity maps level to label."""
+        device = LitterBox(sample_device_data, mock_coordinator)
+        device.detail = {"boxFullSensitivity": "LEVEL_01"}
+        assert device.box_full_sensitivity == "Level 1"
+
+    def test_box_full_sensitivity_attrs(
+        self, mock_coordinator, sample_device_data
+    ) -> None:
+        """Test LitterBox box_full_sensitivity_attrs."""
+        device = LitterBox(sample_device_data, mock_coordinator)
+        device.detail = {"boxFullSensitivity": "LEVEL_02"}
+        attrs = device.box_full_sensitivity_attrs()
+        assert attrs["raw_level"] == "LEVEL_02"
+
+    def test_hass_sensor_structure(self, mock_coordinator, sample_device_data) -> None:
+        """Test LitterBox hass_sensor contains expected keys."""
+        device = LitterBox(sample_device_data, mock_coordinator)
+        device.detail = {"currentError": "Normal"}
+        device.logs = []
+        sensor = device.hass_sensor
+        assert "state" in sensor
+        assert "error" in sensor
+        assert "last_log" in sensor
+        assert "garbage_tobe_status" in sensor
+        assert "litter_weight" in sensor
+        assert "litter_remaining_days" in sensor
+
+    def test_hass_select_structure(self, mock_coordinator, sample_device_data) -> None:
+        """Test LitterBox hass_select contains expected keys."""
+        device = LitterBox(sample_device_data, mock_coordinator)
+        select = device.hass_select
+        assert "mode" in select
+        assert "action" in select
+        assert "garbage" in select
+        assert "box_full_sensitivity" in select
+        assert select["mode"]["options"] == ["auto", "manual", "time"]
+
 
 class TestFeederDevice:
     """Tests for FeederDevice."""
@@ -228,9 +329,7 @@ class TestFeederDevice:
         device.detail = {"error": "Low food level"}
         assert device.error == "Low food level"
 
-    def test_feeder_error_attrs(
-        self, mock_coordinator, sample_feeder_data
-    ) -> None:
+    def test_feeder_error_attrs(self, mock_coordinator, sample_feeder_data) -> None:
         """Test FeederDevice error_attrs."""
         device = FeederDevice(sample_feeder_data, mock_coordinator)
         device.detail = {
@@ -247,9 +346,7 @@ class TestFeederDevice:
         device.detail = {"foodOutStatus": "idle"}
         assert device.state == "idle"
 
-    def test_feeder_state_attrs(
-        self, mock_coordinator, sample_feeder_data
-    ) -> None:
+    def test_feeder_state_attrs(self, mock_coordinator, sample_feeder_data) -> None:
         """Test FeederDevice state_attrs."""
         device = FeederDevice(sample_feeder_data, mock_coordinator)
         device.detail = {
@@ -262,9 +359,7 @@ class TestFeederDevice:
         assert attrs["auto_fill_status"] == "ok"
         assert attrs["key_lock_status"] == "unlocked"
 
-    def test_feeder_hass_sensor(
-        self, mock_coordinator, sample_feeder_data
-    ) -> None:
+    def test_feeder_hass_sensor(self, mock_coordinator, sample_feeder_data) -> None:
         """Test FeederDevice hass_sensor structure."""
         device = FeederDevice(sample_feeder_data, mock_coordinator)
         device.logs = []
@@ -274,9 +369,7 @@ class TestFeederDevice:
         assert "error" in sensor
         assert "last_log" in sensor
 
-    def test_feeder_hass_button(
-        self, mock_coordinator, sample_feeder_data
-    ) -> None:
+    def test_feeder_hass_button(self, mock_coordinator, sample_feeder_data) -> None:
         """Test FeederDevice hass_button has feed action."""
         device = FeederDevice(sample_feeder_data, mock_coordinator)
         button = device.hass_button
@@ -287,18 +380,14 @@ class TestFeederDevice:
 class TestScooperDevice:
     """Tests for ScooperDevice."""
 
-    def test_scooper_properties(
-        self, mock_coordinator, sample_scooper_data
-    ) -> None:
+    def test_scooper_properties(self, mock_coordinator, sample_scooper_data) -> None:
         """Test ScooperDevice basic properties."""
         device = ScooperDevice(sample_scooper_data, mock_coordinator)
         assert device.id == "scooper1"
         assert device.name == "Basement Scooper"
         assert device.type == "SCOOPER"
 
-    def test_scooper_modes(
-        self, mock_coordinator, sample_scooper_data
-    ) -> None:
+    def test_scooper_modes(self, mock_coordinator, sample_scooper_data) -> None:
         """Test ScooperDevice modes include empty mode."""
         device = ScooperDevice(sample_scooper_data, mock_coordinator)
         modes = device.modes
@@ -307,18 +396,14 @@ class TestScooperDevice:
         assert modes["02"] == "time"
         assert modes["03"] == "empty"
 
-    def test_scooper_actions(
-        self, mock_coordinator, sample_scooper_data
-    ) -> None:
+    def test_scooper_actions(self, mock_coordinator, sample_scooper_data) -> None:
         """Test ScooperDevice actions."""
         device = ScooperDevice(sample_scooper_data, mock_coordinator)
         actions = device.actions
         assert actions["00"] == "pause"
         assert actions["01"] == "start"
 
-    def test_scooper_temperature(
-        self, mock_coordinator, sample_scooper_data
-    ) -> None:
+    def test_scooper_temperature(self, mock_coordinator, sample_scooper_data) -> None:
         """Test ScooperDevice temperature."""
         device = ScooperDevice(sample_scooper_data, mock_coordinator)
         device.detail = {"temperature": "25"}
@@ -332,9 +417,7 @@ class TestScooperDevice:
         device.detail = {}
         assert device.temperature == "-"
 
-    def test_scooper_humidity(
-        self, mock_coordinator, sample_scooper_data
-    ) -> None:
+    def test_scooper_humidity(self, mock_coordinator, sample_scooper_data) -> None:
         """Test ScooperDevice humidity."""
         device = ScooperDevice(sample_scooper_data, mock_coordinator)
         device.detail = {"humidity": "45"}
@@ -366,18 +449,14 @@ class TestScooperDevice:
         device._set_action_error("New error")
         assert device.error == "New error"
 
-    def test_scooper_error_attrs(
-        self, mock_coordinator, sample_scooper_data
-    ) -> None:
+    def test_scooper_error_attrs(self, mock_coordinator, sample_scooper_data) -> None:
         """Test ScooperDevice error_attrs contains error_logs."""
         device = ScooperDevice(sample_scooper_data, mock_coordinator)
         attrs = device.error_attrs()
         assert "error_logs" in attrs
         assert isinstance(attrs["error_logs"], list)
 
-    def test_scooper_hass_sensor(
-        self, mock_coordinator, sample_scooper_data
-    ) -> None:
+    def test_scooper_hass_sensor(self, mock_coordinator, sample_scooper_data) -> None:
         """Test ScooperDevice hass_sensor structure."""
         device = ScooperDevice(sample_scooper_data, mock_coordinator)
         sensor = device.hass_sensor
