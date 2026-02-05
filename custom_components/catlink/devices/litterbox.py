@@ -430,3 +430,46 @@ class LitterBox(LitterDevice):
         await self.update_device_detail()
         _LOGGER.info("Change bag: %s", [rdt, pms])
         return rdt
+
+    async def reset_consumable(self, consumables_type: str) -> bool:
+        """Reset a consumable (litter or deodorant) counter."""
+        api = "token/device/union/consumableReset"
+        pms = {
+            "consumablesType": consumables_type,
+            "deviceId": self.id,
+            "deviceType": self.type,
+        }
+        rdt = await self.account.request(api, pms, "POST")
+        eno = rdt.get("returnCode", 0)
+        if eno:
+            err_msg = format_api_error(rdt)
+            _LOGGER.error("Reset consumable %s failed: %s", consumables_type, err_msg)
+            self._set_action_error(err_msg)
+            return False
+        await self.update_device_detail()
+        _LOGGER.info("Reset consumable %s: %s", consumables_type, [rdt, pms])
+        return rdt
+
+    async def async_reset_litter(self) -> bool:
+        """Reset the litter counter."""
+        return await self.reset_consumable("CAT_LITTER")
+
+    async def async_reset_deodorant(self) -> bool:
+        """Reset the deodorant counter."""
+        return await self.reset_consumable("DEODORIZER_02")
+
+    @property
+    def hass_button(self) -> dict:
+        """Return the device buttons."""
+        return {
+            "reset_litter": {
+                "icon": "mdi:shaker-outline",
+                "name": "Reset litter",
+                "async_press": self.async_reset_litter,
+            },
+            "reset_deodorant": {
+                "icon": "mdi:spray-bottle",
+                "name": "Reset deodorant",
+                "async_press": self.async_reset_deodorant,
+            },
+        }

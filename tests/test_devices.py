@@ -421,6 +421,49 @@ class TestLitterBoxAsyncMethods:
         result = await device.select_box_full_sensitivity("Invalid Level")
         assert result is False
 
+    @pytest.mark.usefixtures("enable_custom_integrations")
+    async def test_reset_litter_success(
+        self, mock_coordinator, sample_device_data
+    ) -> None:
+        """Test async_reset_litter calls consumableReset with CAT_LITTER."""
+        device = LitterBox(sample_device_data, mock_coordinator)
+        mock_coordinator.account.request = AsyncMock(return_value={"returnCode": 0})
+        device.update_device_detail = AsyncMock(return_value={})
+
+        result = await device.async_reset_litter()
+
+        assert result is not False
+        mock_coordinator.account.request.assert_called_once()
+        call_args = mock_coordinator.account.request.call_args
+        assert call_args[0][0] == "token/device/union/consumableReset"
+        assert call_args[0][1]["consumablesType"] == "CAT_LITTER"
+        assert call_args[0][1]["deviceId"] == "dev123"
+        assert call_args[0][1]["deviceType"] == "LITTER_BOX_599"
+
+    @pytest.mark.usefixtures("enable_custom_integrations")
+    async def test_reset_deodorant_success(
+        self, mock_coordinator, sample_device_data
+    ) -> None:
+        """Test async_reset_deodorant calls consumableReset with DEODORIZER_02."""
+        device = LitterBox(sample_device_data, mock_coordinator)
+        mock_coordinator.account.request = AsyncMock(return_value={"returnCode": 0})
+        device.update_device_detail = AsyncMock(return_value={})
+
+        result = await device.async_reset_deodorant()
+
+        assert result is not False
+        call_args = mock_coordinator.account.request.call_args
+        assert call_args[0][1]["consumablesType"] == "DEODORIZER_02"
+
+    def test_hass_button_structure(self, mock_coordinator, sample_device_data) -> None:
+        """Test LitterBox hass_button contains reset_litter and reset_deodorant."""
+        device = LitterBox(sample_device_data, mock_coordinator)
+        buttons = device.hass_button
+        assert "reset_litter" in buttons
+        assert "reset_deodorant" in buttons
+        assert buttons["reset_litter"]["name"] == "Reset litter"
+        assert buttons["reset_deodorant"]["name"] == "Reset deodorant"
+
 
 class TestFeederDevice:
     """Tests for FeederDevice."""
