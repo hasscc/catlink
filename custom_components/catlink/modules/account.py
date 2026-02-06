@@ -23,6 +23,7 @@ from ..const import (
     CONF_PHONE,
     CONF_PHONE_IAC,
     CONF_SCAN_INTERVAL,
+    CONF_UPDATE_INTERVAL,
     DEFAULT_API_BASE,
     DOMAIN,
     RSA_PUBLIC_KEY,
@@ -43,7 +44,12 @@ class Account:
 
     def get_config(self, key, default=None) -> str:
         """Return the config of the account."""
-        return self._config.get(key, self.hass.data[DOMAIN]["config"].get(key, default))
+        val = self._config.get(key)
+        if val is not None:
+            return val
+        domain_data = self.hass.data.get(DOMAIN) or {}
+        global_config = domain_data.get("config") or {}
+        return global_config.get(key, default)
 
     @property
     def phone(self) -> str:
@@ -71,8 +77,12 @@ class Account:
     @property
     def update_interval(self) -> datetime.timedelta:
         """Return the update interval of the account. Default is 1 minute."""
-        scan_interval = self.get_config(CONF_SCAN_INTERVAL) or SCAN_INTERVAL
-        return Helper.calculate_update_interval(scan_interval)
+        interval = (
+            self.get_config(CONF_UPDATE_INTERVAL)
+            or self.get_config(CONF_SCAN_INTERVAL)
+            or SCAN_INTERVAL
+        )
+        return Helper.calculate_update_interval(interval)
 
     def api_url(self, api="") -> str:
         """Return the full url of the api."""
@@ -183,6 +193,51 @@ class Account:
         if not dls:
             _LOGGER.warning("Got devices for %s failed: %s", self.phone, rsp)
         return dls
+
+    async def get_cats(self, timezone_id: str | None = None) -> list:
+        """Get the cats of the account."""
+        if not self.token:
+            if not await self.async_login():
+                return []
+        api = "token/pet/health/v3/cats"
+        params: dict[str, str] = {}
+        if timezone_id:
+            params["timezoneId"] = timezone_id
+        rsp = await self.request(api, params)
+        eno = rsp.get("returnCode", 0)
+        if eno == 1002:  # Illegal token
+            if await self.async_login():
+                rsp = await self.request(api, params)
+        cats = rsp.get("data", {}).get("cats") or []
+        if not cats:
+            _LOGGER.warning("Got cats for %s failed: %s", self.phone, rsp)
+        return cats
+
+    async def get_cat_summary_simple(
+        self,
+        pet_id: str,
+        date: str,
+        timezone_id: str | None,
+        sport: int = 1,
+    ) -> dict:
+        """Get a cat summary for a given date."""
+        if not self.token:
+            if not await self.async_login():
+                return {}
+        api = "token/pet/health/v3/summarySimple"
+        params = {
+            "petId": pet_id,
+            "date": date,
+            "sport": sport,
+        }
+        if timezone_id:
+            params["timezoneId"] = timezone_id
+        rsp = await self.request(api, params)
+        eno = rsp.get("returnCode", 0)
+        if eno == 1002:  # Illegal token
+            if await self.async_login():
+                rsp = await self.request(api, params)
+        return rsp.get("data") or {}
 
     @staticmethod
     def params_sign(pms: dict) -> str:

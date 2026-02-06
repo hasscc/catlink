@@ -1,31 +1,30 @@
 """Feeder device class for CatLink integration."""
 
-import datetime
 from typing import TYPE_CHECKING
 
 from homeassistant.components.sensor import SensorDeviceClass, SensorStateClass
 from homeassistant.const import UnitOfMass
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
-from ..const import _LOGGER, DOMAIN
+from ..const import _LOGGER
+from ..helpers import format_api_error
 from ..models.additional_cfg import AdditionalDeviceConfig
-from .device import Device
+from ..models.api.device import FeederDeviceInfo
+from ..models.api.parse import parse_response
+from .base import Device
+from .mixins.logs import LogsMixin
 
 if TYPE_CHECKING:
-    from .devices_coordinator import DevicesCoordinator
+    from ..modules.devices_coordinator import DevicesCoordinator
 
 
-class FeederDevice(Device):
+class FeederDevice(LogsMixin, Device):
     """Feeder device class for CatLink integration."""
-
-    logs: list
-    coordinator_logs = None
 
     def __init__(
         self,
         dat: dict,
         coordinator: "DevicesCoordinator",
-        additional_config: AdditionalDeviceConfig = None,
+        additional_config: AdditionalDeviceConfig | None = None,
     ) -> None:
         """Initialize the device."""
         super().__init__(dat, coordinator, additional_config)
@@ -50,17 +49,18 @@ class FeederDevice(Device):
     async def async_init(self) -> None:
         """Initialize the device."""
         await super().async_init()
-        self.logs = []
-        self.coordinator_logs = DataUpdateCoordinator(
-            self.account.hass,
-            _LOGGER,
-            name=f"{DOMAIN}-{self.id}-logs",
-            update_method=self.update_logs,
-            update_interval=datetime.timedelta(minutes=1),
-        )
-        await self.coordinator_logs.async_refresh()
+        await self._async_init_logs()
+
+    @property
+    def last_log(self) -> str | None:
+        """Return the last log of the device with feeder-specific format."""
+        log = self._last_log
+        if not log:
+            return None
+        return f"{log.get('time')} {log.get('event')} {log.get('firstSection')} {log.get('secondSection')}".strip()
 
     async def update_device_detail(self) -> dict:
+        """Update device detail."""
         api = "token/device/feeder/detail"
         pms = {
             "deviceId": self.id,
@@ -68,7 +68,20 @@ class FeederDevice(Device):
         rsp = None
         try:
             rsp = await self.account.request(api, pms)
-            rdt = rsp.get("data", {}).get("deviceInfo") or {}
+            data = rsp.get("data", {})
+            raw = data.get("deviceInfo")
+            parsed = parse_response(data, "deviceInfo", FeederDeviceInfo)
+            rdt = (
+                parsed.model_dump(by_alias=True)
+                if hasattr(parsed, "model_dump")
+                else (parsed or {})
+            )
+            if not rdt and raw:
+                rdt = raw
+                _LOGGER.debug(
+                    "Using raw deviceInfo for %s because model parsing failed",
+                    self.name,
+                )
         except (TypeError, ValueError) as exc:
             rdt = {}
             _LOGGER.error("Got device detail for %s failed: %s", self.name, exc)
@@ -76,6 +89,7 @@ class FeederDevice(Device):
             _LOGGER.warning("Got device detail for %s failed: %s", self.name, rsp)
         _LOGGER.debug("Update device detail: %s", rsp)
         self.detail = rdt
+        self._action_error = None
         self._handle_listeners()
         return rdt
 
@@ -95,49 +109,11 @@ class FeederDevice(Device):
             "key_lock_status": self.detail.get("keyLockStatus"),
         }
 
-    @property
-    def _last_log(self) -> dict:
-        """Return the last log of the device."""
-        log = {}
-        if self.logs:
-            log = self.logs[0] or {}
-        return log
-
-    @property
-    def last_log(self) -> str:
-        """Return the last log of the device."""
-        log = self._last_log
-        if not log:
-            return None
-        return f"{log.get('time')} {log.get('event')} {log.get('firstSection')} {log.get('secondSection')}".strip()
-
-    def last_log_attrs(self) -> dict:
-        """Return the last log attributes of the device."""
-        log = self._last_log
-        return {
-            **log,
-            "logs": self.logs,
-        }
-
     async def update_logs(self) -> list:
         """Update the logs of the device."""
-        api = "token/device/feeder/stats/log/top5"
-        pms = {
-            "deviceId": self.id,
-        }
-        rsp = None
-        try:
-            rsp = await self.account.request(api, pms)
-            rdt = rsp.get("data", {}).get("feederLogTop5") or []
-        except (TypeError, ValueError) as exc:
-            rdt = {}
-            _LOGGER.warning("Got device logs for %s failed: %s", self.name, exc)
-        if not rdt:
-            _LOGGER.debug("Got device logs for %s failed: %s", self.name, rsp)
-        _LOGGER.debug("Update device logs: %s", rsp)
-        self.logs = rdt
-        self._handle_listeners()
-        return rdt
+        return await self._fetch_logs(
+            "token/device/feeder/stats/log/top5", "feederLogTop5"
+        )
 
     async def food_out(self) -> dict:
         """Food out of the device."""
@@ -149,7 +125,9 @@ class FeederDevice(Device):
         rdt = await self.account.request(api, pms, "POST")
         eno = rdt.get("returnCode", 0)
         if eno:
-            _LOGGER.error("Food out failed: %s", [rdt, pms])
+            err_msg = format_api_error(rdt)
+            _LOGGER.error("Food out failed: %s", err_msg)
+            self._set_action_error(err_msg)
             return False
         await self.update_device_detail()
         _LOGGER.info("Food out: %s", [rdt, pms])

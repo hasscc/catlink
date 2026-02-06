@@ -1,12 +1,15 @@
-"""Device module for CatLink integration."""
+"""Device base class for CatLink integration."""
 
 from typing import TYPE_CHECKING
 
 from ..const import _LOGGER
+from ..helpers import format_api_error
 from ..models.additional_cfg import AdditionalDeviceConfig
+from ..models.api.device import DeviceInfoBase
+from ..models.api.parse import parse_response
 
 if TYPE_CHECKING:
-    from .devices_coordinator import DevicesCoordinator
+    from ..modules.devices_coordinator import DevicesCoordinator
 
 
 class Device:
@@ -25,6 +28,7 @@ class Device:
         self.coordinator = coordinator
         self.account = coordinator.account
         self.listeners = {}
+        self._action_error: str | None = None
         self.update_data(dat)
         self.detail = {}
 
@@ -38,9 +42,15 @@ class Device:
         self._handle_listeners()
         _LOGGER.info("Update device data: %s", dat)
 
-    def _handle_listeners(self):
+    def _handle_listeners(self) -> None:
+        """Notify all registered listeners to refresh their state."""
         for fun in self.listeners.values():
             fun()
+
+    def _set_action_error(self, error_msg: str) -> None:
+        """Store API error and refresh entities so the error sensor updates."""
+        self._action_error = error_msg
+        self._handle_listeners()
 
     @property
     def id(self) -> str:
@@ -85,6 +95,8 @@ class Device:
     @property
     def error(self) -> str:
         """Return the device error."""
+        if self._action_error:
+            return self._action_error
         try:
             return self.detail.get("currentMessage") or self.data.get(
                 "currentErrorMessage", ""
@@ -208,7 +220,9 @@ class Device:
         rdt = await self.account.request(api, pms, "POST")
         eno = rdt.get("returnCode", 0)
         if eno:
-            _LOGGER.error("Select mode failed: %s", [rdt, pms])
+            err_msg = format_api_error(rdt)
+            _LOGGER.error("Select mode failed: %s", err_msg)
+            self._set_action_error(err_msg)
             return False
         await self.update_device_detail()
         _LOGGER.info("Select mode: %s", [rdt, pms])
@@ -232,7 +246,9 @@ class Device:
         rdt = await self.account.request(api, pms, "POST")
         eno = rdt.get("returnCode", 0)
         if eno:
-            _LOGGER.error("Select action failed: %s", [rdt, pms])
+            err_msg = format_api_error(rdt)
+            _LOGGER.error("Select action failed: %s", err_msg)
+            self._set_action_error(err_msg)
             return False
         await self.update_device_detail()
         _LOGGER.info("Select action: %s", [rdt, pms])
@@ -247,12 +263,26 @@ class Device:
         rsp = None
         try:
             rsp = await self.account.request(api, pms)
-            rdt = rsp.get("data", {}).get("deviceInfo") or {}
+            data = rsp.get("data", {})
+            raw = data.get("deviceInfo")
+            parsed = parse_response(data, "deviceInfo", DeviceInfoBase)
+            rdt = (
+                parsed.model_dump(by_alias=True)
+                if hasattr(parsed, "model_dump")
+                else (parsed or {})
+            )
+            if not rdt and raw:
+                rdt = raw
+                _LOGGER.debug(
+                    "Using raw deviceInfo for %s because model parsing failed",
+                    self.name,
+                )
         except (TypeError, ValueError) as exc:
             rdt = {}
             _LOGGER.error("Got device detail for %s failed: %s", self.name, exc)
         if not rdt:
             _LOGGER.warning("Got device detail for %s failed: %s", self.name, rsp)
         self.detail = rdt
+        self._action_error = None
         self._handle_listeners()
         return rdt

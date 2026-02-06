@@ -10,20 +10,37 @@ from homeassistant.const import CONF_PASSWORD, CONF_SCAN_INTERVAL
 DOMAIN = "catlink"
 _LOGGER = logging.getLogger(__name__)
 
-DOMAIN = "catlink"
 CONFIG = "config"
 SCAN_INTERVAL = datetime.timedelta(minutes=1)
 
 CONF_ACCOUNTS = "accounts"
 CONF_API_BASE = "api_base"
+CONF_REGION = "region"
 CONF_USER_ID = "uid"
 CONF_PHONE = "phone"
 CONF_PHONE_IAC = "phone_iac"
 CONF_LANGUAGE = "language"
 
 CONF_CATS = "cats"
+CONF_DEVICE_IDS = "device_ids"
+CONF_UPDATE_INTERVAL = "update_interval"
 
 DEFAULT_API_BASE = "https://app.catlinks.cn/api/"
+
+# Device types with full support (sensors, switches, selects, etc.)
+SUPPORTED_DEVICE_TYPES = frozenset({"C08", "SCOOPER", "LITTER_BOX_599", "FEEDER"})
+
+# API server regions: value is the API base URL
+API_SERVERS: dict[str, str] = {
+    "global": "https://app.catlinks.cn/api/",
+    "china": "https://app-sh.catlinks.cn/api/",
+    "usa": "https://app-usa.catlinks.cn/api/",
+    "singapore": "https://app-sgp.catlinks.cn/api/",
+}
+
+# Config flow error keys
+ERROR_CANNOT_CONNECT = "cannot_connect"
+ERROR_INVALID_AUTH = "invalid_auth"
 
 SIGN_KEY = "00109190907746a7ad0e2139b6d09ce47551770157fe4ac5922f3a5454c82712"
 RSA_PUBLIC_KEY = (

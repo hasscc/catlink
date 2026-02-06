@@ -1,51 +1,30 @@
 """Litter box class for CatLink."""
 
-from collections import deque
 import datetime
 from typing import TYPE_CHECKING
 
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
-
-from ..const import _LOGGER, DOMAIN
+from ..const import _LOGGER
+from ..helpers import format_api_error
 from ..models.additional_cfg import AdditionalDeviceConfig
-from .device import Device
+from ..models.api.device import LitterDeviceInfo
+from ..models.api.parse import parse_response
+from .litter_device import LitterDevice
 
 if TYPE_CHECKING:
-    from .devices_coordinator import DevicesCoordinator
+    from ..modules.devices_coordinator import DevicesCoordinator
 
 
-class LitterBox(Device):
+class LitterBox(LitterDevice):
     """Litter box class for CatLink."""
-
-    logs: list
-    coordinator_logs = None
 
     def __init__(
         self,
         dat: dict,
         coordinator: "DevicesCoordinator",
-        additional_config: AdditionalDeviceConfig = None,
+        additional_config: AdditionalDeviceConfig | None = None,
     ) -> None:
         """Initialize the litter box."""
         super().__init__(dat, coordinator, additional_config)
-        self.logs = []
-        self._litter_weight_during_day = deque(
-            maxlen=self.additional_config.max_samples_litter or 24
-        )
-        self.empty_litter_box_weight = self.additional_config.empty_weight or 0.0
-
-    async def async_init(self) -> None:
-        """Initialize the litter box."""
-        await super().async_init()
-        self.logs = []
-        self.coordinator_logs = DataUpdateCoordinator(
-            self.account.hass,
-            _LOGGER,
-            name=f"{DOMAIN}-{self.id}-logs",
-            update_method=self.update_logs,
-            update_interval=datetime.timedelta(minutes=1),
-        )
-        await self.coordinator_logs.async_refresh()
 
     @property
     def modes(self) -> dict:
@@ -83,24 +62,10 @@ class LitterBox(Device):
         }
 
     @property
-    def _last_log(self) -> dict:
-        """Return the last log."""
-        log = {}
-        if self.logs:
-            log = self.logs[0] or {}
-        return log
-
-    @property
-    def last_log(self) -> str:
-        """Return the last log."""
-        log = self._last_log
-        if not log:
-            return None
-        return f"{log.get('time')} {log.get('event')}"
-
-    @property
     def error(self) -> str:
         """Return the error."""
+        if self._action_error:
+            return self._action_error
         try:
             return self.detail.get("currentError") or "Normal Operation"
         except Exception as exc:
@@ -108,61 +73,24 @@ class LitterBox(Device):
             return "Unknown"
 
     @property
-    def litter_weight(self) -> float:
-        """Return the litter weight."""
-        litter_weight = 0
-        try:
-            catLitterWeight = self.detail.get(
-                "catLitterWeight", self.empty_litter_box_weight
-            )
-            litter_weight = catLitterWeight - self.empty_litter_box_weight
-            self._litter_weight_during_day.append(litter_weight)
-
-        except Exception as exc:
-            _LOGGER.error("Got litter weight failed: %s", exc)
-
-        return litter_weight
-
-    @property
-    def litter_remaining_days(self) -> str:
+    def litter_remaining_days(self) -> int:
         """Return the litter remaining days."""
         try:
-            return int(self.detail.get("litterCountdown", 0))
+            raw = self.detail.get("litterCountdown", 0)
+            result = int(raw)
+            if result == 0:
+                _LOGGER.debug(
+                    "litter_remaining_days is 0: litterCountdown=%r (detail keys: %s)",
+                    raw,
+                    list(self.detail.keys()) if self.detail else "none",
+                )
+            return result
         except Exception as exc:
             _LOGGER.error("Got litter remaining days failed: %s", exc)
             return 0
 
     @property
-    def total_clean_time(self) -> int:
-        """Return the total clean time."""
-        try:
-            return int(self.detail.get("inductionTimes", 0)) + int(
-                self.detail.get("manualTimes", 0)
-            )
-        except Exception as exc:
-            _LOGGER.error("Got total clean time failed: %s", exc)
-            return 0
-
-    @property
-    def manual_clean_time(self) -> int:
-        """Return the manual clean time."""
-        try:
-            return int(self.detail.get("manualTimes", 0))
-        except Exception as exc:
-            _LOGGER.error("Got manual clean time failed: %s", exc)
-            return 0
-
-    @property
-    def deodorant_countdown(self) -> int:
-        """Return the deodorant countdown."""
-        try:
-            return int(self.detail.get("deodorantCountdown", 0))
-        except Exception as exc:
-            _LOGGER.error("Got deodorant countdown failed: %s", exc)
-            return 0
-
-    @property
-    def knob_status(self) -> bool:
+    def knob_status(self) -> str:
         """Return the knob status."""
         try:
             knob_flab = (
@@ -179,32 +107,7 @@ class LitterBox(Device):
             return "Unknown"
 
     @property
-    def occupied(self) -> bool:
-        """Return the occupied status."""
-        # based on _litter_weight_during_day to determine if the litter box is occupied
-        # check whether value is increasing at any point in the day
-        # Now we can check which cat is using the litter box :)
-        try:
-            return any(
-                self._litter_weight_during_day[i]
-                < self._litter_weight_during_day[i + 1]
-                for i in range(len(self._litter_weight_during_day) - 1)
-            )
-        except Exception as exc:
-            _LOGGER.error("Got occupied status failed: %s", exc)
-            return False
-
-    @property
-    def online(self) -> bool:
-        """Return the online status."""
-        try:
-            return self.detail.get("online")
-        except Exception as exc:
-            _LOGGER.error("Got online status failed: %s", exc)
-            return False
-
-    @property
-    def last_sync(self) -> str:
+    def last_sync(self) -> str | None:
         """Return the last sync time."""
         return (
             datetime.datetime.fromtimestamp(
@@ -318,23 +221,10 @@ class LitterBox(Device):
             },
         }
 
-    # Additional Attributes
     def state_attrs(self) -> dict:
         """Return the state attributes."""
         return {
-            "mac": self.mac,
-            "work_status": self.detail.get("workStatus"),
-            "alarm_status": self.detail.get("alarmStatus"),
-            "weight": self.detail.get("weight"),
-            "litter_weight_kg": self.detail.get("catLitterWeight"),
-            "total_clean_times": int(self.detail.get("inductionTimes", 0))
-            + int(self.detail.get("manualTimes", 0)),
-            "manual_clean_times": self.detail.get("manualTimes"),
-            "key_lock": self.detail.get("keyLock"),
-            "safe_time": self.detail.get("safeTime"),
-            "pave_second": self.detail.get("catLitterPaveSecond"),
-            "deodorant_countdown": self.detail.get("deodorantCountdown"),
-            "litter_countdown": self.detail.get("litterCountdown"),
+            **self._base_state_attrs(),
             "last_sync_time": datetime.datetime.fromtimestamp(
                 int(self.detail.get("lastHeartBeatTimestamp")) / 1000.0
             ).strftime("%Y-%m-%d %H:%M:%S")
@@ -344,18 +234,11 @@ class LitterBox(Device):
             "quiet_times": self.detail.get("quietTimes"),
         }
 
-    def last_log_attrs(self) -> dict:
-        """Return the last log attributes."""
-        log = self._last_log
-        return {
-            **log,
-            "logs": self.logs,
-        }
-
     def garbage_attrs(self) -> dict:
         """Return the garbage attributes."""
         status = "Unknown"
-        match self.garbageStatus:
+        garbage_status = self.detail.get("garbageStatus", "")
+        match garbage_status:
             case "00":
                 status = "Normal"
             case "02":
@@ -368,7 +251,7 @@ class LitterBox(Device):
             "status": status,
         }
 
-    def error_attrs(self) -> list:
+    def error_attrs(self) -> dict:
         """Return the error attributes."""
         try:
             return {
@@ -376,23 +259,20 @@ class LitterBox(Device):
             }
         except Exception as exc:
             _LOGGER.error("Got error attributes failed: %s", exc)
-            return []
+            return {}
 
     @property
-    def box_full_sensitivity(self) -> str:
+    def box_full_sensitivity(self) -> str | None:
         """Return the box full sensitivity."""
         sensitivity = self.detail.get("boxFullSensitivity", "")
-        # Try direct mapping first
         mapped_value = self.box_full_levels.get(sensitivity)
         if mapped_value:
             _LOGGER.debug(
                 "Box full sensitivity mapped: %s -> %s", sensitivity, mapped_value
             )
             return mapped_value
-        # Try converting numeric format (e.g., "01" -> "LEVEL_01")
         if sensitivity and isinstance(sensitivity, (str, int)):
             try:
-                # If it's a number or numeric string, convert to LEVEL_XX format
                 if isinstance(sensitivity, str) and sensitivity.isdigit():
                     level_key = f"LEVEL_{sensitivity.zfill(2)}"
                 elif isinstance(sensitivity, int):
@@ -412,10 +292,10 @@ class LitterBox(Device):
             except (ValueError, AttributeError):
                 pass
         _LOGGER.warning(
-            "Box full sensitivity not found in mapping: %s (type: %s, available: %s)",
+            "Box full sensitivity raw value %r (type: %s) could not be mapped to known levels; valid values: %s",
             sensitivity,
             type(sensitivity).__name__,
-            list(self.box_full_levels.keys()),
+            ", ".join(self.box_full_levels.keys()),
         )
         return None
 
@@ -425,25 +305,11 @@ class LitterBox(Device):
             "raw_level": self.detail.get("boxFullSensitivity"),
         }
 
-    # Actions
     async def update_logs(self) -> list:
         """Update the logs."""
-        api = "token/litterbox/stats/log/top5"
-        pms = {
-            "deviceId": self.id,
-        }
-        rsp = None
-        try:
-            rsp = await self.account.request(api, pms)
-            rdt = rsp.get("data", {}).get("scooperLogTop5") or []
-        except (TypeError, ValueError) as exc:
-            rdt = {}
-            _LOGGER.error("Got device logs for %s failed: %s", self.name, exc)
-        if not rdt:
-            _LOGGER.warning("Got device logs for %s failed: %s", self.name, rsp)
-        self.logs = rdt
-        self._handle_listeners()
-        return rdt
+        return await self._fetch_logs(
+            "token/litterbox/stats/log/top5", "scooperLogTop5"
+        )
 
     async def select_mode(self, mode, **kwargs) -> bool:
         """Select the device mode."""
@@ -463,7 +329,9 @@ class LitterBox(Device):
         rdt = await self.account.request(api, pms, "POST")
         eno = rdt.get("returnCode", 0)
         if eno:
-            _LOGGER.error("Select mode failed: %s", [rdt, pms])
+            err_msg = format_api_error(rdt)
+            _LOGGER.error("Select mode failed: %s", err_msg)
+            self._set_action_error(err_msg)
             return False
         await self.update_device_detail()
         _LOGGER.info("Select mode: %s", [rdt, pms])
@@ -479,7 +347,9 @@ class LitterBox(Device):
                 break
         if lvl is None:
             _LOGGER.warning(
-                "Select box full sensitivity failed for %s in %s", level, self.box_full_levels
+                "Select box full sensitivity failed for %s in %s",
+                level,
+                self.box_full_levels,
             )
             return False
         pms = {
@@ -489,7 +359,9 @@ class LitterBox(Device):
         rdt = await self.account.request(api, pms, "POST")
         eno = rdt.get("returnCode", 0)
         if eno:
-            _LOGGER.error("Select box full sensitivity failed: %s", [rdt, pms])
+            err_msg = format_api_error(rdt)
+            _LOGGER.error("Select box full sensitivity failed: %s", err_msg)
+            self._set_action_error(err_msg)
             return False
         await self.update_device_detail()
         _LOGGER.info("Select box full sensitivity: %s", [rdt, pms])
@@ -504,13 +376,27 @@ class LitterBox(Device):
         rsp = None
         try:
             rsp = await self.account.request(api, pms)
-            rdt = rsp.get("data", {}).get("deviceInfo") or {}
+            data = rsp.get("data", {})
+            raw = data.get("deviceInfo")
+            parsed = parse_response(data, "deviceInfo", LitterDeviceInfo)
+            rdt = (
+                parsed.model_dump(by_alias=True)
+                if hasattr(parsed, "model_dump")
+                else (parsed or {})
+            )
+            if not rdt and raw:
+                rdt = raw
+                _LOGGER.debug(
+                    "Using raw deviceInfo for %s because model parsing failed",
+                    self.name,
+                )
         except (TypeError, ValueError) as exc:
             rdt = {}
             _LOGGER.error("Got device detail for %s failed: %s", self.name, exc)
         if not rdt:
             _LOGGER.warning("Got device detail for %s failed: %s", self.name, rsp)
         self.detail = rdt
+        self._action_error = None
         self._handle_listeners()
         return rdt
 
@@ -534,7 +420,9 @@ class LitterBox(Device):
         rdt = await self.account.request(api, pms, "POST")
         eno = rdt.get("returnCode", 0)
         if eno:
-            _LOGGER.error("Select action failed: %s", [rdt, pms])
+            err_msg = format_api_error(rdt)
+            _LOGGER.error("Select action failed: %s", err_msg)
+            self._set_action_error(err_msg)
             return False
         await self.update_device_detail()
         _LOGGER.info("Select action: %s", [rdt, pms])
@@ -550,8 +438,53 @@ class LitterBox(Device):
         rdt = await self.account.request(api, pms, "POST")
         eno = rdt.get("returnCode", 0)
         if eno:
-            _LOGGER.error("Change bag failed: %s", [rdt, pms])
+            err_msg = format_api_error(rdt)
+            _LOGGER.error("Change bag failed: %s", err_msg)
+            self._set_action_error(err_msg)
             return False
         await self.update_device_detail()
         _LOGGER.info("Change bag: %s", [rdt, pms])
         return rdt
+
+    async def reset_consumable(self, consumables_type: str) -> bool:
+        """Reset a consumable (litter or deodorant) counter."""
+        api = "token/device/union/consumableReset"
+        pms = {
+            "consumablesType": consumables_type,
+            "deviceId": self.id,
+            "deviceType": self.type,
+        }
+        rdt = await self.account.request(api, pms, "POST")
+        eno = rdt.get("returnCode", 0)
+        if eno:
+            err_msg = format_api_error(rdt)
+            _LOGGER.error("Reset consumable %s failed: %s", consumables_type, err_msg)
+            self._set_action_error(err_msg)
+            return False
+        await self.update_device_detail()
+        _LOGGER.info("Reset consumable %s: %s", consumables_type, [rdt, pms])
+        return rdt
+
+    async def async_reset_litter(self) -> bool:
+        """Reset the litter counter."""
+        return await self.reset_consumable("CAT_LITTER")
+
+    async def async_reset_deodorant(self) -> bool:
+        """Reset the deodorant counter."""
+        return await self.reset_consumable("DEODORIZER_02")
+
+    @property
+    def hass_button(self) -> dict:
+        """Return the device buttons."""
+        return {
+            "reset_litter": {
+                "icon": "mdi:shaker-outline",
+                "name": "Reset litter",
+                "async_press": self.async_reset_litter,
+            },
+            "reset_deodorant": {
+                "icon": "mdi:spray-bottle",
+                "name": "Reset deodorant",
+                "async_press": self.async_reset_deodorant,
+            },
+        }
