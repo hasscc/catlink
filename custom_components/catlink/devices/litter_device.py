@@ -53,6 +53,13 @@ class LitterDevice(LogsMixin, Device):
             )
             litter_weight = cat_litter_weight - self.empty_litter_box_weight
             self._litter_weight_during_day.append(litter_weight)
+            if litter_weight == 0.0:
+                _LOGGER.debug(
+                    "litter_weight is 0: catLitterWeight=%r, empty_litter_box_weight=%r (detail keys: %s)",
+                    cat_litter_weight,
+                    self.empty_litter_box_weight,
+                    list(self.detail.keys()) if self.detail else "none",
+                )
         except Exception as exc:
             _LOGGER.error("Got litter weight failed: %s", exc)
         return litter_weight
@@ -81,7 +88,15 @@ class LitterDevice(LogsMixin, Device):
     def manual_clean_time(self) -> int:
         """Return the manual clean time."""
         try:
-            return int(self.detail.get("manualTimes", 0))
+            raw = self.detail.get("manualTimes", 0)
+            result = int(raw)
+            if result == 0:
+                _LOGGER.debug(
+                    "manual_clean_time is 0: manualTimes=%r (detail keys: %s)",
+                    raw,
+                    list(self.detail.keys()) if self.detail else "none",
+                )
+            return result
         except Exception as exc:
             _LOGGER.error("Get manual clean time failed: %s", exc)
             return 0

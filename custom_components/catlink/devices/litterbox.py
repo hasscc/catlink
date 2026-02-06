@@ -76,7 +76,15 @@ class LitterBox(LitterDevice):
     def litter_remaining_days(self) -> int:
         """Return the litter remaining days."""
         try:
-            return int(self.detail.get("litterCountdown", 0))
+            raw = self.detail.get("litterCountdown", 0)
+            result = int(raw)
+            if result == 0:
+                _LOGGER.debug(
+                    "litter_remaining_days is 0: litterCountdown=%r (detail keys: %s)",
+                    raw,
+                    list(self.detail.keys()) if self.detail else "none",
+                )
+            return result
         except Exception as exc:
             _LOGGER.error("Got litter remaining days failed: %s", exc)
             return 0
@@ -284,10 +292,10 @@ class LitterBox(LitterDevice):
             except (ValueError, AttributeError):
                 pass
         _LOGGER.warning(
-            "Box full sensitivity not found in mapping: %s (type: %s, available: %s)",
+            "Box full sensitivity raw value %r (type: %s) could not be mapped to known levels; valid values: %s",
             sensitivity,
             type(sensitivity).__name__,
-            list(self.box_full_levels.keys()),
+            ", ".join(self.box_full_levels.keys()),
         )
         return None
 
@@ -369,12 +377,19 @@ class LitterBox(LitterDevice):
         try:
             rsp = await self.account.request(api, pms)
             data = rsp.get("data", {})
-            parsed = parse_response(data, "deviceInfo", LitterDeviceInfo, {})
+            raw = data.get("deviceInfo")
+            parsed = parse_response(data, "deviceInfo", LitterDeviceInfo)
             rdt = (
                 parsed.model_dump(by_alias=True)
                 if hasattr(parsed, "model_dump")
                 else (parsed or {})
             )
+            if not rdt and raw:
+                rdt = raw
+                _LOGGER.debug(
+                    "Using raw deviceInfo for %s because model parsing failed",
+                    self.name,
+                )
         except (TypeError, ValueError) as exc:
             rdt = {}
             _LOGGER.error("Got device detail for %s failed: %s", self.name, exc)

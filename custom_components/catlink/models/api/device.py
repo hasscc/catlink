@@ -33,8 +33,8 @@ class DeviceInfoBase(BaseModel):
     safeTime: str = ""
     catLitterPaveSecond: str = ""
     catLitterWeight: float = 0.0
-    inductionTimes: int = 0
-    manualTimes: int = 0
+    inductionTimes: Any = 0
+    manualTimes: Any = 0
     deodorantCountdown: int = 0
     litterCountdown: Any = None
     online: bool = False
@@ -48,7 +48,7 @@ class LitterDeviceInfo(DeviceInfoBase):
     model_config = ConfigDict(extra="allow")
 
     deviceErrorList: list[dict[str, Any]] = []
-    boxFullSensitivity: str = ""
+    boxFullSensitivity: Any = ""
     quietTimes: str = ""
     garbageStatus: str = ""
     currentError: str = ""
