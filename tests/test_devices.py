@@ -9,6 +9,7 @@ from custom_components.catlink.devices.feeder import FeederDevice
 from custom_components.catlink.devices.litterbox import LitterBox
 from custom_components.catlink.devices.registry import create_device
 from custom_components.catlink.devices.scooper import ScooperDevice
+from custom_components.catlink.devices.scooper_pro_ultra import ScooperProUltraDevice
 from custom_components.catlink.models.additional_cfg import AdditionalDeviceConfig
 
 
@@ -54,6 +55,18 @@ def sample_scooper_data():
         "model": "Scooper C1",
         "deviceName": "Basement Scooper",
         "deviceType": "SCOOPER",
+    }
+
+
+@pytest.fixture
+def sample_pro_ultra_data():
+    """Sample Scooper Pro Ultra device data."""
+    return {
+        "id": "ultra1",
+        "mac": "44:72:AC:0D:89:37",
+        "model": "ScooperPROUltra",
+        "deviceName": "ScooperPROUltra",
+        "deviceType": "VISUAL_PRO_ULTRA",
     }
 
 
@@ -115,6 +128,13 @@ class TestDeviceRegistry:
         device = create_device(sample_scooper_data, mock_coordinator)
         assert isinstance(device, ScooperDevice)
         assert device.name == "Basement Scooper"
+
+    def test_create_scooper_pro_ultra(
+        self, mock_coordinator, sample_pro_ultra_data
+    ) -> None:
+        """Test create_device returns ScooperProUltraDevice for VISUAL_PRO_ULTRA."""
+        device = create_device(sample_pro_ultra_data, mock_coordinator)
+        assert isinstance(device, ScooperProUltraDevice)
 
     def test_create_unknown_type_falls_back_to_base(self, mock_coordinator) -> None:
         """Test unknown device type uses base Device class."""
@@ -621,6 +641,69 @@ class TestScooperDeviceAsyncMethods:
         assert len(result) == 1
         mock_coordinator.account.request.assert_called_once_with(
             "token/device/scooper/stats/log/top5", {"deviceId": "scooper1"}
+        )
+
+
+class TestScooperProUltraDevice:
+    """Tests for ScooperProUltraDevice."""
+
+    def test_name_appends_limited_support(
+        self, mock_coordinator, sample_pro_ultra_data
+    ) -> None:
+        """Test ScooperProUltraDevice name appends limited support suffix."""
+        device = ScooperProUltraDevice(sample_pro_ultra_data, mock_coordinator)
+        assert device.name.endswith(" (Limited Support)")
+
+    @pytest.mark.usefixtures("enable_custom_integrations")
+    async def test_update_device_detail_brief_info(
+        self, mock_coordinator, sample_pro_ultra_data
+    ) -> None:
+        """Test update_device_detail uses visualScooper briefInfo."""
+        device = ScooperProUltraDevice(sample_pro_ultra_data, mock_coordinator)
+        mock_coordinator.account.request = AsyncMock(
+            return_value={
+                "data": {
+                    "deviceInfo": {
+                        "litterCountdown": 14,
+                        "deodorantCountdown": 0,
+                        "totalCleanTimes": "3",
+                    }
+                }
+            }
+        )
+
+        result = await device.update_device_detail()
+
+        assert result["litterCountdown"] == 14
+        assert result["totalCleanTimes"] == "3"
+        mock_coordinator.account.request.assert_called_once()
+        assert (
+            mock_coordinator.account.request.call_args[0][0]
+            == "token/visualScooper/briefInfo"
+        )
+
+    @pytest.mark.usefixtures("enable_custom_integrations")
+    async def test_update_logs_timeline_v2(
+        self, mock_coordinator, sample_pro_ultra_data
+    ) -> None:
+        """Test update_logs uses timeline/v2 endpoint."""
+        device = ScooperProUltraDevice(sample_pro_ultra_data, mock_coordinator)
+        mock_coordinator.account.request = AsyncMock(
+            return_value={
+                "data": {
+                    "records": [
+                        {"time": "11:05", "event": "Auto-clean"},
+                    ]
+                }
+            }
+        )
+
+        result = await device.update_logs()
+
+        assert result[0]["event"] == "Auto-clean"
+        assert (
+            mock_coordinator.account.request.call_args[0][0]
+            == "token/litterbox/stats/log/timeline/v2"
         )
 
 
