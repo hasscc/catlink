@@ -2,16 +2,16 @@
 
 from unittest.mock import AsyncMock, MagicMock
 
-import pytest
-
 from custom_components.catlink.devices.base import Device
 from custom_components.catlink.devices.cat import CatDevice
+from custom_components.catlink.devices.c08 import C08Device
 from custom_components.catlink.devices.feeder import FeederDevice
 from custom_components.catlink.devices.litterbox import LitterBox
 from custom_components.catlink.devices.registry import create_device
 from custom_components.catlink.devices.scooper import ScooperDevice
 from custom_components.catlink.devices.scooper_pro_ultra import ScooperProUltraDevice
 from custom_components.catlink.models.additional_cfg import AdditionalDeviceConfig
+import pytest
 
 
 @pytest.fixture
@@ -56,6 +56,18 @@ def sample_scooper_data():
         "model": "Scooper C1",
         "deviceName": "Basement Scooper",
         "deviceType": "SCOOPER",
+    }
+
+
+@pytest.fixture
+def sample_c08_data():
+    """Sample C08 device data."""
+    return {
+        "id": "c08-1",
+        "mac": "01:23:45:67:89:AB",
+        "model": "Open-X",
+        "deviceName": "Bedroom C08",
+        "deviceType": "C08",
     }
 
 
@@ -120,7 +132,7 @@ class TestDevice:
         """Test _action_error overrides detail error."""
         device = Device(sample_device_data, mock_coordinator)
         device.detail = {"currentMessage": "Old error"}
-        device._set_action_error("Protection is temporarily paused.")
+        device._set_action_error("Protection is temporarily paused.")  # noqa: SLF001
         assert device.error == "Protection is temporarily paused."
 
     def test_device_update_data(self, mock_coordinator, sample_device_data) -> None:
@@ -152,6 +164,12 @@ class TestDeviceRegistry:
         device = create_device(sample_scooper_data, mock_coordinator)
         assert isinstance(device, ScooperDevice)
         assert device.name == "Basement Scooper"
+
+    def test_create_c08(self, mock_coordinator, sample_c08_data) -> None:
+        """Test create_device returns C08Device for C08."""
+        device = create_device(sample_c08_data, mock_coordinator)
+        assert isinstance(device, C08Device)
+        assert device.name == "Bedroom C08"
 
     def test_create_scooper_pro_ultra(
         self, mock_coordinator, sample_pro_ultra_data
@@ -517,6 +535,111 @@ class TestLitterBoxAsyncMethods:
         assert buttons["reset_deodorant"]["name"] == "Reset deodorant"
 
 
+class TestC08Device:
+    """Tests for C08Device."""
+
+    def test_modes_property(self, mock_coordinator, sample_c08_data) -> None:
+        """Test C08Device modes."""
+        device = C08Device(sample_c08_data, mock_coordinator)
+        modes = device.modes
+        assert modes["00"] == "auto"
+        assert modes["01"] == "manual"
+        assert modes["02"] == "scheduled"
+
+    def test_litter_type(self, mock_coordinator, sample_c08_data) -> None:
+        """Test C08Device litter type mapping."""
+        device = C08Device(sample_c08_data, mock_coordinator)
+        device.detail = {"litterType": "00"}
+        assert device.litter_type == "Bentonite"
+
+    def test_safe_time(self, mock_coordinator, sample_c08_data) -> None:
+        """Test C08Device safe time mapping."""
+        device = C08Device(sample_c08_data, mock_coordinator)
+        device.detail = {"safeTime": "5"}
+        assert device.safe_time == "5 min"
+
+    def test_notice_switch_mapping(self, mock_coordinator, sample_c08_data) -> None:
+        """Test notice switches map to notice configs."""
+        device = C08Device(sample_c08_data, mock_coordinator)
+        device.set_notice_configs(
+            [{"noticeItem": "LITTERBOX_599_CAT_CAME", "noticeSwitch": True}]
+        )
+        assert device.notice_cat_came is True
+        assert device.notice_box_full is False
+
+    def test_hass_switch_contains_notice(self, mock_coordinator, sample_c08_data) -> None:
+        """Test C08Device hass_switch includes notice entries."""
+        device = C08Device(sample_c08_data, mock_coordinator)
+        switches = device.hass_switch
+        assert "notice_cat_came" in switches
+        assert switches["notice_cat_came"]["name"] == "Notice: Cat came"
+
+    def test_hass_select_structure(self, mock_coordinator, sample_c08_data) -> None:
+        """Test C08Device hass_select contains expected keys."""
+        device = C08Device(sample_c08_data, mock_coordinator)
+        selects = device.hass_select
+        assert "mode" in selects
+        assert "action" in selects
+        assert "litter_type" in selects
+        assert "safe_time" in selects
+
+
+class TestC08DeviceAsyncMethods:
+    """Tests for C08Device async methods."""
+
+    @pytest.mark.usefixtures("enable_custom_integrations")
+    async def test_update_device_detail_c08_endpoint(
+        self, mock_coordinator, sample_c08_data
+    ) -> None:
+        """Test update_device_detail uses C08 info endpoint."""
+        device = C08Device(sample_c08_data, mock_coordinator)
+        mock_coordinator.account.request = AsyncMock(
+            return_value={"data": {"deviceInfo": {"workStatus": "00"}}}
+        )
+        device.async_refresh_c08_extras = AsyncMock()
+
+        result = await device.update_device_detail()
+
+        assert result["workStatus"] == "00"
+        mock_coordinator.account.request.assert_called_once_with(
+            "token/litterbox/info/c08", {"deviceId": "c08-1"}
+        )
+        device.async_refresh_c08_extras.assert_called_once()
+
+    @pytest.mark.usefixtures("enable_custom_integrations")
+    async def test_select_action_v3(
+        self, mock_coordinator, sample_c08_data
+    ) -> None:
+        """Test select_action uses v3 command payload."""
+        device = C08Device(sample_c08_data, mock_coordinator)
+        mock_coordinator.account.request = AsyncMock(return_value={"returnCode": 0})
+        device.update_device_detail = AsyncMock(return_value={})
+
+        result = await device.select_action("Clean: start")
+
+        assert result is True
+        call_args = mock_coordinator.account.request.call_args
+        assert call_args[0][0] == "token/litterbox/actionCmd/v3"
+        assert call_args[0][1]["action"] == "RUN"
+        assert call_args[0][1]["behavior"] == "CLEAN"
+
+    @pytest.mark.usefixtures("enable_custom_integrations")
+    async def test_select_litter_type(
+        self, mock_coordinator, sample_c08_data
+    ) -> None:
+        """Test select_litter_type sends litterType setting."""
+        device = C08Device(sample_c08_data, mock_coordinator)
+        mock_coordinator.account.request = AsyncMock(return_value={"returnCode": 0})
+        device.update_device_detail = AsyncMock(return_value={})
+
+        result = await device.select_litter_type("Bentonite")
+
+        assert result is True
+        call_args = mock_coordinator.account.request.call_args
+        assert call_args[0][0] == "token/litterbox/catLitterSetting"
+        assert call_args[0][1]["litterType"] == "00"
+
+
 class TestFeederDevice:
     """Tests for FeederDevice."""
 
@@ -620,7 +743,7 @@ class TestFeederDeviceAsyncMethods:
         result = await device.food_out()
 
         assert result is False
-        assert "Device busy" in (device._action_error or "")
+        assert "Device busy" in (device._action_error or "")  # noqa: SLF001
 
     @pytest.mark.usefixtures("enable_custom_integrations")
     async def test_update_device_detail_success(
@@ -628,7 +751,7 @@ class TestFeederDeviceAsyncMethods:
     ) -> None:
         """Test FeederDevice update_device_detail parses response."""
         device = FeederDevice(sample_feeder_data, mock_coordinator)
-        device._handle_listeners = MagicMock()
+        device._handle_listeners = MagicMock()  # noqa: SLF001
         mock_coordinator.account.request = AsyncMock(
             return_value={
                 "data": {
@@ -645,7 +768,7 @@ class TestFeederDeviceAsyncMethods:
         assert result["foodOutStatus"] == "idle"
         assert result["weight"] == 250
         assert device.detail == result
-        device._handle_listeners.assert_called_once()
+        device._handle_listeners.assert_called_once()  # noqa: SLF001
 
 
 class TestScooperDeviceAsyncMethods:
@@ -657,7 +780,7 @@ class TestScooperDeviceAsyncMethods:
     ) -> None:
         """Test ScooperDevice update_logs calls correct API."""
         device = ScooperDevice(sample_scooper_data, mock_coordinator)
-        device._handle_listeners = MagicMock()
+        device._handle_listeners = MagicMock()  # noqa: SLF001
         mock_coordinator.account.request = AsyncMock(
             return_value={
                 "data": {
@@ -808,7 +931,7 @@ class TestScooperDevice:
         """Test ScooperDevice _action_error overrides."""
         device = ScooperDevice(sample_scooper_data, mock_coordinator)
         device.detail = {"currentMessage": "Old"}
-        device._set_action_error("New error")
+        device._set_action_error("New error")  # noqa: SLF001
         assert device.error == "New error"
 
     def test_scooper_error_attrs(self, mock_coordinator, sample_scooper_data) -> None:
