@@ -264,12 +264,19 @@ class Device:
         try:
             rsp = await self.account.request(api, pms)
             data = rsp.get("data", {})
-            parsed = parse_response(data, "deviceInfo", DeviceInfoBase, {})
+            raw = data.get("deviceInfo")
+            parsed = parse_response(data, "deviceInfo", DeviceInfoBase)
             rdt = (
                 parsed.model_dump(by_alias=True)
                 if hasattr(parsed, "model_dump")
                 else (parsed or {})
             )
+            if not rdt and raw:
+                rdt = raw
+                _LOGGER.debug(
+                    "Using raw deviceInfo for %s because model parsing failed",
+                    self.name,
+                )
         except (TypeError, ValueError) as exc:
             rdt = {}
             _LOGGER.error("Got device detail for %s failed: %s", self.name, exc)

@@ -9,6 +9,8 @@ from homeassistant.const import PERCENTAGE, UnitOfTemperature
 
 from ..const import _LOGGER
 from ..models.additional_cfg import AdditionalDeviceConfig
+from ..models.api.device import LitterDeviceInfo
+from ..models.api.parse import parse_response
 from .litter_device import LitterDevice
 
 if TYPE_CHECKING:
@@ -139,6 +141,42 @@ class ScooperDevice(LitterDevice):
         return {
             "error_logs": list(self._error_logs),
         }
+
+    async def update_device_detail(self) -> dict:
+        """Update device detail. Uses LitterDeviceInfo for Scooper response parsing."""
+        api = "token/device/info"
+        pms = {"deviceId": self.id}
+        rsp = None
+        try:
+            rsp = await self.account.request(api, pms)
+            data = rsp.get("data", {})
+            raw = data.get("deviceInfo")
+            parsed = parse_response(data, "deviceInfo", LitterDeviceInfo)
+            rdt = (
+                parsed.model_dump(by_alias=True)
+                if hasattr(parsed, "model_dump")
+                else (parsed or {})
+            )
+            if not rdt and raw:
+                rdt = raw
+                _LOGGER.debug(
+                    "Using raw deviceInfo for %s because model parsing failed",
+                    self.name,
+                )
+        except (TypeError, ValueError) as exc:
+            rdt = {}
+            _LOGGER.error("Got device detail for %s failed: %s", self.name, exc)
+        if not rdt:
+            data_keys = list(rsp.get("data", {}).keys()) if rsp else []
+            _LOGGER.warning(
+                "Got device detail for %s failed (empty parse); response data keys: %s",
+                self.name,
+                data_keys,
+            )
+        self.detail = rdt
+        self._action_error = None
+        self._handle_listeners()
+        return rdt
 
     async def update_logs(self) -> list:
         """Update device logs."""
