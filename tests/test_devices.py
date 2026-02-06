@@ -5,6 +5,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 from custom_components.catlink.devices.base import Device
+from custom_components.catlink.devices.cat import CatDevice
 from custom_components.catlink.devices.feeder import FeederDevice
 from custom_components.catlink.devices.litterbox import LitterBox
 from custom_components.catlink.devices.registry import create_device
@@ -67,6 +68,29 @@ def sample_pro_ultra_data():
         "model": "ScooperPROUltra",
         "deviceName": "ScooperPROUltra",
         "deviceType": "VISUAL_PRO_ULTRA",
+    }
+
+
+@pytest.fixture
+def sample_cat_data():
+    """Sample cat device data."""
+    return {
+        "id": "cat-169004",
+        "pet_id": "169004",
+        "petName": "Zulu",
+        "deviceName": "Zulu",
+        "deviceType": "CAT",
+        "mac": "cat-169004",
+        "model": "STREET CAT",
+        "gender": 3,
+        "weight": 4.7,
+        "summary_simple": {
+            "statusDescription": "Data collection in progress",
+            "toilet": {"times": 2, "weightAvg": 4.7, "peed": 1, "pood": 1},
+            "drink": {"times": 1},
+            "diet": {"times": 0, "intakes": "0"},
+            "sport": {"activeDuration": 12},
+        },
     }
 
 
@@ -135,6 +159,14 @@ class TestDeviceRegistry:
         """Test create_device returns ScooperProUltraDevice for VISUAL_PRO_ULTRA."""
         device = create_device(sample_pro_ultra_data, mock_coordinator)
         assert isinstance(device, ScooperProUltraDevice)
+
+    def test_create_cat_device(
+        self, mock_coordinator, sample_cat_data
+    ) -> None:
+        """Test create_device returns CatDevice for CAT."""
+        device = create_device(sample_cat_data, mock_coordinator)
+        assert isinstance(device, CatDevice)
+        assert device.name == "Zulu"
 
     def test_create_unknown_type_falls_back_to_base(self, mock_coordinator) -> None:
         """Test unknown device type uses base Device class."""
