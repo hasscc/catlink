@@ -55,6 +55,20 @@ class LitterDeviceInfo(DeviceInfoBase):
     currentMessage: str = ""
 
 
+class C08DeviceInfo(LitterDeviceInfo):
+    """C08 device specific fields."""
+
+    model_config = ConfigDict(extra="allow")
+
+    autoUpdatePetWeight: bool | None = None
+    indicatorLight: str = ""
+    paneltone: str = ""
+    autoBurial: bool | None = None
+    continuousCleaning: bool | None = None
+    litterType: int | str | None = None
+    kittenModel: bool | None = None
+
+
 class FeederDeviceInfo(DeviceInfoBase):
     """Feeder device specific fields."""
 
