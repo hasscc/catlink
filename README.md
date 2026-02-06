@@ -27,13 +27,12 @@
 - [Installation](#installation)
   - [Easy way](#easy-way)
   - [Manually](#manually)
-  - [Configuration Example](#configuration-example)
 - [Supported Devices and Operations](#supported-devices-and-operations)
   - [Scooper SE](#supported-devices-and-operations)
   - [Scooper PRO](#supported-devices-and-operations)
 - [How to Configure?](#how-to-configure)
-  - [API Regions](#api-regions)
 - [Services (Optional)](#services-optional)
+- [Changelog](#changelog)
 - [How to contribute?](#how-to-contribute)
 - [Disclaimer on Using Logos](#disclaimer-on-using-logos)
 
@@ -83,30 +82,11 @@ wget -O - https://get.hacs.vip | DOMAIN=catlink REPO_PATH=hasscc/catlink ARCHIVE
 3. Call this [`service: shell_command.update_catlink`](https://my.home-assistant.io/redirect/developer_call_service/?service=shell_command.update_catlink) in Developer Tools
 2. Restart HA core again
 
-### Configuration Example:
-
-```yaml
-catlink:
-  phone: "xxxxxx"
-  password: "xxxxxx"
-  phone_iac: 86 # Default
-  api_base: "https://app-usa.catlinks.cn/api/"
-  scan_interval: "00:00:10"
-  language: "en_GB"
-
-  # Multiple accounts (Optional)
-  accounts:
-    - username: 18866660001
-      password: password1
-    - username: 18866660002
-      password: password2
-```
-
 ## Supported Devices and Operations
 
-<div style="display: flex; justify-content: space-around;">
+<div style="display: flex; justify-content: space-between; flex-wrap: nowrap; gap: 16px;">
 
-  <div style="text-align: center; width: 45%;">
+  <div style="text-align: center; width: 33.33%;">
     <h3><a href="https://www.catlinkus.com/products/catlink-smart-litter-box-scooper-se">Scooper SE</a></h3>
     <img src="https://www.catlinkus.com/cdn/shop/files/CATLINK-Lite-01_757acadb-ebb8-4469-88c6-3ca3dd820706_610x610_crop_center.jpg?v=1691003577" alt="Scooper SE" width="150">
     <h4>Operations</h4>
@@ -117,16 +97,18 @@ catlink:
       <li>Litter weight measurement</li>
       <li>Litter days left</li>
       <li>Deodorant replacement countdown in days</li>
+      <li>(NEW) Reset litter and deodorant buttons</li>
       <li>Occupacy flag</li>
       <li>Cleaning count</li>
       <li>Knob status</li>
       <li>Garbage Tobe status</li>
       <li>Online status</li>
       <li>Logs & Errors</li>
+      <li>Entities: sensor, binary sensor, select, switch, button</li>
     </ul>
   </div>
 
-  <div style="text-align: center; width: 45%;">
+  <div style="text-align: center; width: 33.33%;">
     <h3><a href="https://www.catlinkus.com/products/catlink-self-cleaning-cat-litter-box-pro">Scooper PRO</a></h3>
     <img src="https://www.catlinkus.com/cdn/shop/files/1500-1500_610x610_crop_center.jpg?v=1691705114" alt="Scooper PRO" width="150">
     <h4>Operations</h4>
@@ -136,95 +118,91 @@ catlink:
       <li>Deodorant replacement countdown in days</li>
       <li>Litter days left</li>
       <li>Litter weight measurement</li>
+      <li>Reset litter and deodorant buttons</li>
       <li>Occupacy flag</li>
       <li>Cleaning count</li>
       <li>Temperature (Celsius)</li>
       <li>Humidity</li>
       <li>Online status</li>
       <li>Logs & Error</li>
+      <li>Entities: sensor, binary sensor, select, switch, button</li>
     </ul>
   </div>
 
-  <div style="text-align: center; width: 45%;">
+  <div style="text-align: center; width: 33.33%;">
     <h3><a href="https://www.catlinkus.com/products/catlink-ai-feeder-for-only-pet-young">Feeder Young</a></h3>
-    <img src="https://cdn.shopify.com/s/files/1/0641/0056/5251/files/3_94db5ca7-eeeb-4f76-bd7a-c35c3a434a48_610x610_crop_center.jpg?v=1718122855" alt="Feeder Young" width="150">
+    <img src="https://web.archive.org/web/20221230071208im_/https://cdn.shopify.com/s/files/1/0641/0056/5251/products/3_cd58df89-6457-45af-a5c7-6ceb01272c40_700x.jpg?v=1657250711" alt="Feeder Young" width="150">
     <h4>Operations</h4>
     <ul style="text-align: left;">
       <li>Feed Button</li>
       <li>Food tray weight</li>
       <li>Online status</li>
       <li>Logs & Error</li>
+      <li>Entities: sensor, binary sensor, button</li>
     </ul>
   </div>
 
 </div>
 
+#### Additional supported devices
+
+<div style="display: flex; justify-content: space-around;">
+
+  <div style="text-align: center; width: 45%;">
+    <h3>Open-X/C08</h3>
+    <img src="https://www.catlinkus.com/cdn/shop/files/OPENX9_610x610_crop_center.webp?v=1767769832" alt="Open-X/C08" width="150">
+    <h4>Operations</h4>
+    <ul style="text-align: left;">
+      <li>Changing operation mode (Auto, Manual, Scheduled)</li>
+      <li>Actions (Clean, Pause, Cancel, Pave)</li>
+      <li>Litter weight, remaining days, and deodorant countdown</li>
+      <li>Quiet mode, child lock, indicator light, keypad tone</li>
+      <li>Notice switches and pet stats</li>
+      <li>Entities: sensor, binary sensor, select, switch, button</li>
+    </ul>
+  </div>
+
+  <div style="text-align: center; width: 45%;">
+    <h3>Scooper Pro Ultra (limited support)</h3>
+    <img src="https://www.catlinkus.com/cdn/shop/files/ULTRA3_832ba0c1-c1b6-4ec0-ba8a-6ec5122897dd_610x610_crop_center.webp?v=1768480746" alt="Scooper Pro Ultra" width="150">
+    <h4>Operations</h4>
+    <ul style="text-align: left;">
+      <li>Litter remaining days</li>
+      <li>Deodorant countdown</li>
+      <li>Total clean time</li>
+      <li>Logs</li>
+      <li>Entities: sensor</li>
+    </ul>
+  </div>
+
+</div>
+
+#### Cats
+
+<div style="display: flex; justify-content: space-around;">
+
+  <div style="text-align: center; width: 45%;">
+    <h3>Smart collars (via the Cats integration)</h3>
+    <img src="https://play-lh.googleusercontent.com/eHPhN_fUDhdxMK4JAvlzjB5Mh-H72crLn2U3Khk37lzolNg2CTDgZXkB5bjPiM3CDqM" alt="CatLINK smart collar" width="150">
+    <h4>Operations</h4>
+    <ul style="text-align: left;">
+      <li>Activity and status sensors</li>
+      <li>Weight and body metrics sensors</li>
+      <li>Presence and last seen tracking</li>
+      <li>Entities: sensor, binary sensor</li>
+    </ul>
+  </div>
+
+</div>
+
+
 ### How to Configure?
 
 > ! Recommend sharing devices to another account, because you can keep only one login session, which means that you'll have to re-login to CATLINK each time your HA instance pulls the data.
 
-```yaml
-# configuration.yaml
-
-catlink:
-  # Single account
-  phone: xxxxxxxxx # Username of Catlink APP (without country code)
-  password: xxxxxxxxxx # Password
-  phone_iac: 86 # Optional, International access code, default is 86 (China)
-  api_base: # Optional, default is China server: https://app.catlinks.cn/api/ (see API Regions)
-  scan_interval: # Optional, default is 00:01:00
-  language: "en_GB"
-
-  devices: # Optional
-    - name: "Scooper C1" # Optional 
-      mac: "AABBCCDDEE" # Optional
-      empty_weight: 3.0 # (Optional) Empty litterbox weight defaults to 0.0
-      max_samples_litter: 24 # (Optional) Number of samples to determinate whether cat is inside
-
-
-  # Multiple accounts
-  accounts:
-    - username: 18866660001
-      password: password1
-    - username: 18866660002
-      password: password2
-```
-
-#### API Regions
-
-> To verify your region, please navigate to `Me` > `Settings` > `Server Nodes`
-
-<p style="font-size: 12px; font-style:italic"> Please precise your location, as number of features might depend on it. </p>
-
-<table style="width: 100%; border-collapse: collapse; text-align: left;">
-
-  <thead>
-    <tr>
-      <th style="padding: 8px 10px; border-bottom: 1px solid #ddd; font-weight: bold;">Region</th>
-      <th style="padding: 8px 10px; border-bottom: 1px solid #ddd; font-weight: bold;">API Base</th>
-    </tr>
-  </thead>
-
-  <tbody>
-    <tr>
-      <td style="padding: 8px 10px;"><span style="font-size: 20px;">🌎</span> Global/Recomended</td>
-      <td style="padding: 8px 10px;"><a href="https://app.catlinks.cn/api/" target="_blank" style="color: #0066cc; text-decoration: none;">https://app.catlinks.cn/api/</a></td>
-    </tr>
-    <tr>
-      <td style="padding: 8px 10px;"><span style="font-size: 20px;">🇨🇳</span> Mainland China (Sh)</td>
-      <td style="padding: 8px 10px;"><a href="https://app-sh.catlinks.cn/api/" target="_blank" style="color: #0066cc; text-decoration: none;">https://app-sh.catlinks.cn/api/</a></td>
-    </tr>
-    <tr>
-      <td style="padding: 8px 10px;"><span style="font-size: 20px;">🇺🇸</span> Euroamerica</td>
-      <td style="padding: 8px 10px;"><a href="https://app-usa.catlinks.cn/api/" target="_blank" style="color: #0066cc; text-decoration: none;">https://app-usa.catlinks.cn/api/</a></td>
-    </tr>
-    <tr>
-      <td style="padding: 8px 10px;"><span style="font-size: 20px;">🇸🇬</span> Singapore</td>
-      <td style="padding: 8px 10px;"><a href="https://app.catlinks.cn/api/" target="_blank" style="color: #0066cc; text-decoration: none;">https://app-sgp.catlinks.cn/api/</a></td>
-    </tr>
-  </tbody>
-
-</table>
+Just use ConfigFlow. Enter your phonenumber (eg. +493034994004) and password. <br>
+That's it. <br>
+It will automatically discover your Region, Cats & Devices.
 
 ## Services (Optional)
 
@@ -239,6 +217,10 @@ data:
   params:
     key: val
 ```
+
+## Changelog
+
+See `CHANGELOG.md` for release notes.
 
 ### How to contribute?
 
