@@ -329,6 +329,61 @@ class TestAccountGetDevices:
             mock_login.assert_called_once()
 
 
+class TestAccountGetCats:
+    """Tests for Account get_cats."""
+
+    @pytest.mark.usefixtures("enable_custom_integrations")
+    async def test_get_cats_returns_list(self, account) -> None:
+        """Test get_cats returns cats list from API."""
+        with patch.object(account, "request", new_callable=AsyncMock) as mock_request:
+            mock_request.return_value = {
+                "returnCode": 0,
+                "data": {"cats": [{"id": "cat1", "petName": "Zulu"}]},
+            }
+            cats = await account.get_cats("Europe/Belgrade")
+
+            assert cats == [{"id": "cat1", "petName": "Zulu"}]
+            mock_request.assert_called_once()
+
+    @pytest.mark.usefixtures("enable_custom_integrations")
+    async def test_get_cats_login_when_no_token(
+        self, hass, mock_http_session
+    ) -> None:
+        """Test get_cats calls async_login when token is empty."""
+        config = {
+            CONF_PHONE_IAC: "86",
+            CONF_PHONE: "13812345678",
+            CONF_PASSWORD: "short",
+        }
+        acc = Account(hass, config)
+        acc._config[CONF_TOKEN] = None
+
+        with patch.object(acc, "async_login", new_callable=AsyncMock) as mock_login:
+            mock_login.return_value = False
+            cats = await acc.get_cats("Europe/Belgrade")
+
+            assert cats == []
+            mock_login.assert_called_once()
+
+
+class TestAccountGetCatSummarySimple:
+    """Tests for Account get_cat_summary_simple."""
+
+    @pytest.mark.usefixtures("enable_custom_integrations")
+    async def test_get_cat_summary_simple_returns_data(self, account) -> None:
+        """Test get_cat_summary_simple returns summary data."""
+        with patch.object(account, "request", new_callable=AsyncMock) as mock_request:
+            mock_request.return_value = {
+                "returnCode": 0,
+                "data": {"statusDescription": "Good"},
+            }
+            summary = await account.get_cat_summary_simple(
+                "169004", "2026-02-06", "Europe/Belgrade"
+            )
+
+            assert summary == {"statusDescription": "Good"}
+            mock_request.assert_called_once()
+
 class TestAccountAsyncCheckAuth:
     """Tests for Account async_check_auth."""
 

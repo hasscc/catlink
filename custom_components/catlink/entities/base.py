@@ -33,6 +33,11 @@ class CatlinkEntity(CoordinatorEntity):
         self._attr_device_class = self._option.get("class")
         self._attr_native_unit_of_measurement = self._option.get("unit")
         self._attr_state_class = self._option.get("state_class")
+        entity_picture = self._option.get("entity_picture")
+        if callable(entity_picture):
+            self._attr_entity_picture = entity_picture()
+        elif entity_picture:
+            self._attr_entity_picture = entity_picture
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, self._attr_device_id)},
             name=device.name,
@@ -66,6 +71,9 @@ class CatlinkEntity(CoordinatorEntity):
             _LOGGER.debug(
                 "Entity update: %s", [self.entity_id, self._name, self._attr_state]
             )
+        entity_picture = self._option.get("entity_picture")
+        if callable(entity_picture):
+            self._attr_entity_picture = entity_picture()
 
         fun = self._option.get("state_attrs")
         if callable(fun):

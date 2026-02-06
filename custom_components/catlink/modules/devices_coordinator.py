@@ -1,7 +1,10 @@
 """The component."""
 
+import asyncio
+
 from homeassistant.const import CONF_DEVICES
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
+from homeassistant.util import dt as dt_util
 
 from .account import Account
 from ..const import _LOGGER, CONF_DEVICE_IDS, DOMAIN, SUPPORTED_DOMAINS
@@ -54,6 +57,51 @@ class DevicesCoordinator(DataUpdateCoordinator):
                 dvc.update_data(dat)
             else:
                 dvc = create_device(dat, self, additional_config)
+                self.hass.data[DOMAIN][CONF_DEVICES][did] = dvc
+            await dvc.async_init()
+            for d in SUPPORTED_DOMAINS:
+                await self.update_hass_entities(d, dvc)
+        cats = await self.account.get_cats(self.hass.config.time_zone)
+        if cats:
+            timezone_id = self.hass.config.time_zone
+            date = dt_util.now().date().isoformat()
+            requests = [
+                self.account.get_cat_summary_simple(
+                    cat.get("id"), date, timezone_id
+                )
+                for cat in cats
+                if cat.get("id")
+            ]
+            summaries = (
+                await asyncio.gather(*requests) if requests else []
+            )
+        else:
+            summaries = []
+
+        summary_map = {
+            cat.get("id"): summary
+            for cat, summary in zip(cats, summaries, strict=False)
+            if cat.get("id")
+        }
+        for cat in cats:
+            pet_id = cat.get("id")
+            if not pet_id:
+                continue
+            cat_data = {**cat}
+            cat_data["pet_id"] = pet_id
+            cat_data["id"] = f"cat-{pet_id}"
+            cat_data["mac"] = f"cat-{pet_id}"
+            cat_data["deviceType"] = "CAT"
+            cat_data["deviceName"] = cat_data.get("petName") or f"Cat {pet_id}"
+            cat_data.setdefault("model", cat_data.get("breedName") or "Cat")
+            cat_data["summary_simple"] = summary_map.get(pet_id, {})
+            did = cat_data["id"]
+            old = self.hass.data[DOMAIN][CONF_DEVICES].get(did)
+            if old:
+                dvc = old
+                dvc.update_data(cat_data)
+            else:
+                dvc = create_device(cat_data, self, None)
                 self.hass.data[DOMAIN][CONF_DEVICES][did] = dvc
             await dvc.async_init()
             for d in SUPPORTED_DOMAINS:

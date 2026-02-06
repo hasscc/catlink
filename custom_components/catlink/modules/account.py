@@ -194,6 +194,51 @@ class Account:
             _LOGGER.warning("Got devices for %s failed: %s", self.phone, rsp)
         return dls
 
+    async def get_cats(self, timezone_id: str | None = None) -> list:
+        """Get the cats of the account."""
+        if not self.token:
+            if not await self.async_login():
+                return []
+        api = "token/pet/health/v3/cats"
+        params: dict[str, str] = {}
+        if timezone_id:
+            params["timezoneId"] = timezone_id
+        rsp = await self.request(api, params)
+        eno = rsp.get("returnCode", 0)
+        if eno == 1002:  # Illegal token
+            if await self.async_login():
+                rsp = await self.request(api, params)
+        cats = rsp.get("data", {}).get("cats") or []
+        if not cats:
+            _LOGGER.warning("Got cats for %s failed: %s", self.phone, rsp)
+        return cats
+
+    async def get_cat_summary_simple(
+        self,
+        pet_id: str,
+        date: str,
+        timezone_id: str | None,
+        sport: int = 1,
+    ) -> dict:
+        """Get a cat summary for a given date."""
+        if not self.token:
+            if not await self.async_login():
+                return {}
+        api = "token/pet/health/v3/summarySimple"
+        params = {
+            "petId": pet_id,
+            "date": date,
+            "sport": sport,
+        }
+        if timezone_id:
+            params["timezoneId"] = timezone_id
+        rsp = await self.request(api, params)
+        eno = rsp.get("returnCode", 0)
+        if eno == 1002:  # Illegal token
+            if await self.async_login():
+                rsp = await self.request(api, params)
+        return rsp.get("data") or {}
+
     @staticmethod
     def params_sign(pms: dict) -> str:
         """Sign the params."""

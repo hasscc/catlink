@@ -188,6 +188,35 @@ class TestDevicesCoordinatorAsyncUpdateData:
             assert len(result) == 0
             mock_create.assert_not_called()
 
+    @pytest.mark.usefixtures("enable_custom_integrations")
+    async def test_update_data_creates_cat_devices(
+        self, coordinator, mock_account, coordinator_hass_data
+    ) -> None:
+        """Test _async_update_data creates cat devices from API response."""
+        mock_account.get_devices = AsyncMock(return_value=[])
+        mock_account.get_cats = AsyncMock(
+            return_value=[{"id": "169004", "petName": "Zulu", "breedName": "Cat"}]
+        )
+        mock_account.get_cat_summary_simple = AsyncMock(
+            return_value={"statusDescription": "Data collection in progress"}
+        )
+
+        with patch(
+            "custom_components.catlink.modules.devices_coordinator.create_device"
+        ) as mock_create:
+            mock_device = MagicMock()
+            mock_device.id = "cat-169004"
+            mock_device.name = "Zulu"
+            mock_device.update_data = MagicMock()
+            mock_device.async_init = AsyncMock()
+            mock_create.return_value = mock_device
+
+            result = await coordinator._async_update_data()
+
+            assert "cat-169004" in result
+            mock_create.assert_called_once()
+            mock_account.get_cat_summary_simple.assert_called_once()
+
 
 class TestDevicesCoordinatorUpdateHassEntities:
     """Tests for DevicesCoordinator update_hass_entities."""
