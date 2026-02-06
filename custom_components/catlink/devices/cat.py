@@ -1,15 +1,16 @@
 """Cat device class for CatLink integration."""
 
+from __future__ import annotations
+
 from typing import TYPE_CHECKING, Any
 
+from custom_components.catlink.devices.base import Device
 from homeassistant.components.sensor import SensorDeviceClass, SensorStateClass
 from homeassistant.const import UnitOfMass
 from homeassistant.util import dt as dt_util
 
-from .base import Device
-
 if TYPE_CHECKING:
-    from ..modules.devices_coordinator import DevicesCoordinator
+    from custom_components.catlink.modules.devices_coordinator import DevicesCoordinator
 
 
 GENDER_LABELS: dict[int, str] = {
@@ -26,7 +27,7 @@ class CatDevice(Device):
     def __init__(
         self,
         dat: dict,
-        coordinator: "DevicesCoordinator",
+        coordinator: DevicesCoordinator,
         additional_config: Any | None = None,
     ) -> None:
         """Initialize the cat device."""
@@ -91,9 +92,14 @@ class CatDevice(Device):
         return dt_util.utc_from_timestamp(birthday / 1000).date().isoformat()
 
     @property
-    def avatar(self) -> str | None:
+    def avatar_url(self) -> str | None:
         """Return the pet avatar URL."""
         return self.data.get("avatar")
+
+    @property
+    def avatar(self) -> None:
+        """Return the avatar state."""
+        return None
 
     def _summary(self) -> dict:
         return self.data.get("summary_simple") or {}
@@ -214,6 +220,7 @@ class CatDevice(Device):
             },
             "avatar": {
                 "icon": "mdi:image",
+                "entity_picture": self.avatar_url,
             },
             "toilet_times": {
                 "icon": "mdi:toilet",
