@@ -3,6 +3,7 @@
 from typing import TYPE_CHECKING
 
 from .base import Device
+from .c08 import C08Device
 from .feeder import FeederDevice
 from .litterbox import LitterBox
 from .scooper import ScooperDevice
@@ -13,6 +14,7 @@ if TYPE_CHECKING:
     from ..modules.devices_coordinator import DevicesCoordinator
 
 DEVICE_TYPES: dict[str, type[Device]] = {
+    "C08": C08Device,
     "SCOOPER": ScooperDevice,
     "LITTER_BOX_599": LitterBox,  # SCOOPER C1
     "VISUAL_PRO_ULTRA": ScooperProUltraDevice,
