@@ -117,6 +117,37 @@ class TestCatlinkEntity:
         assert entity._attr_unique_id.endswith("-litter_weight")
         assert "LITTER_BOX_599" in entity._attr_unique_id
 
+    def test_entity_picture_static(
+        self, hass, mock_device, mock_coordinator
+    ) -> None:
+        """Test entity picture supports static value."""
+        mock_device.coordinator = mock_coordinator
+        entity = CatlinkEntity(
+            "status", mock_device, {"entity_picture": "https://example.com/cat.jpg"}
+        )
+        entity.coordinator = mock_coordinator
+        entity.hass = hass
+
+        assert entity._attr_entity_picture == "https://example.com/cat.jpg"
+
+    def test_entity_picture_callable_updates(
+        self, hass, mock_device, mock_coordinator
+    ) -> None:
+        """Test entity picture supports callable updates."""
+        mock_device.coordinator = mock_coordinator
+        mock_device.avatar_url = "https://example.com/cat1.jpg"
+        entity = CatlinkEntity(
+            "status", mock_device, {"entity_picture": lambda: mock_device.avatar_url}
+        )
+        entity.coordinator = mock_coordinator
+        entity.hass = hass
+
+        assert entity._attr_entity_picture == "https://example.com/cat1.jpg"
+
+        mock_device.avatar_url = "https://example.com/cat2.jpg"
+        entity.update()
+        assert entity._attr_entity_picture == "https://example.com/cat2.jpg"
+
 
 class TestCatlinkBinarySensorEntity:
     """Tests for CatlinkBinarySensorEntity."""
