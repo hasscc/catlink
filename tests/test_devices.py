@@ -979,9 +979,9 @@ class TestPureProDevice:
         """Test PureProDevice modes."""
         device = PureProDevice(sample_purepro_data, mock_coordinator)
         modes = device.modes
-        assert modes["CONTINUOUS_SPRING"] == "Continuous"
-        assert modes["SMART_SPRING"] == "Smart"
-        assert modes["INTERMITTENT_SPRING"] == "Intermittent"
+        assert modes["CONTINUOUS_SPRING"] == "Flowing mode"
+        assert modes["INTERMITTENT_SPRING"] == "Eco-mode"
+        assert modes["INDUCTION_SPRING"] == "Smart mode"
 
     def test_purepro_hass_sensor(self, mock_coordinator, sample_purepro_data) -> None:
         """Test PureProDevice hass_sensor structure."""
@@ -1021,7 +1021,7 @@ class TestPureProDeviceAsyncMethods:
         mock_coordinator.account.request = AsyncMock(return_value={"returnCode": 0})
         device.update_device_detail = AsyncMock(return_value={})
 
-        result = await device.select_mode("Continuous")
+        result = await device.select_mode("Flowing mode")
 
         assert result is True
         call_args = mock_coordinator.account.request.call_args
@@ -1033,16 +1033,16 @@ class TestPureProDeviceAsyncMethods:
     async def test_update_logs_purepro(
         self, mock_coordinator, sample_purepro_data
     ) -> None:
-        """Test update_logs uses PurePro stats/cats endpoint."""
+        """Test update_logs uses PurePro stats/log/top5 endpoint."""
         device = PureProDevice(sample_purepro_data, mock_coordinator)
         mock_coordinator.account.request = AsyncMock(
-            return_value={"data": {"cats": [{"name": "Zulu"}]}}
+            return_value={"data": {"pureLogTop5": [{"event": "Cat drank water"}]}}
         )
 
         result = await device.update_logs()
 
         assert len(result) == 1
-        assert result[0]["name"] == "Zulu"
+        assert result[0]["event"] == "Cat drank water"
         mock_coordinator.account.request.assert_called_once_with(
-            "token/device/purepro/stats/cats", {"deviceId": "purepro1"}
+            "token/device/purepro/stats/log/top5", {"deviceId": "purepro1"}
         )
