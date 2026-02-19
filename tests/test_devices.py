@@ -10,6 +10,7 @@ from custom_components.catlink.devices.litterbox import LitterBox
 from custom_components.catlink.devices.registry import create_device
 from custom_components.catlink.devices.scooper import ScooperDevice
 from custom_components.catlink.devices.scooper_pro_ultra import ScooperProUltraDevice
+from custom_components.catlink.devices.purepro import PureProDevice
 from custom_components.catlink.models.additional_cfg import AdditionalDeviceConfig
 import pytest
 
@@ -80,6 +81,18 @@ def sample_pro_ultra_data():
         "model": "ScooperPROUltra",
         "deviceName": "ScooperPROUltra",
         "deviceType": "VISUAL_PRO_ULTRA",
+    }
+
+
+@pytest.fixture
+def sample_purepro_data():
+    """Sample PurePro device data."""
+    return {
+        "id": "purepro1",
+        "mac": "22:33:44:55:66:77",
+        "model": "Pure Pro",
+        "deviceName": "Cat Fountain",
+        "deviceType": "PUREPRO",
     }
 
 
@@ -726,9 +739,22 @@ class TestFeederDeviceAsyncMethods:
         mock_coordinator.account.request.assert_called_once()
         call_args = mock_coordinator.account.request.call_args
         assert call_args[0][0] == "token/device/feeder/foodOut"
-        assert call_args[0][1]["footOutNum"] == 5
+        assert call_args[0][1]["footOutNum"] == 1
         assert call_args[0][1]["deviceId"] == "feeder1"
         device.update_device_detail.assert_called_once()
+
+    @pytest.mark.usefixtures("enable_custom_integrations")
+    async def test_food_out_custom_portions(self, mock_coordinator, sample_feeder_data) -> None:
+        """Test food_out uses custom portion value."""
+        device = FeederDevice(sample_feeder_data, mock_coordinator)
+        device.portions = 3
+        mock_coordinator.account.request = AsyncMock(return_value={"returnCode": 0})
+        device.update_device_detail = AsyncMock(return_value={})
+
+        await device.food_out()
+
+        call_args = mock_coordinator.account.request.call_args
+        assert call_args[0][1]["footOutNum"] == 3
 
     @pytest.mark.usefixtures("enable_custom_integrations")
     async def test_food_out_api_error_sets_action_error(
@@ -950,3 +976,86 @@ class TestScooperDevice:
         assert "temperature" in sensor
         assert "humidity" in sensor
         assert "error" in sensor
+
+
+class TestPureProDevice:
+    """Tests for PureProDevice."""
+
+    def test_purepro_properties(self, mock_coordinator, sample_purepro_data) -> None:
+        """Test PureProDevice basic properties."""
+        device = PureProDevice(sample_purepro_data, mock_coordinator)
+        assert device.id == "purepro1"
+        assert device.name == "Cat Fountain"
+        assert device.type == "PUREPRO"
+
+    def test_purepro_modes(self, mock_coordinator, sample_purepro_data) -> None:
+        """Test PureProDevice modes."""
+        device = PureProDevice(sample_purepro_data, mock_coordinator)
+        modes = device.modes
+        assert modes["CONTINUOUS_SPRING"] == "Flowing mode"
+        assert modes["INTERMITTENT_SPRING"] == "Eco-mode"
+        assert modes["INDUCTION_SPRING"] == "Smart mode"
+
+    def test_purepro_hass_sensor(self, mock_coordinator, sample_purepro_data) -> None:
+        """Test PureProDevice hass_sensor structure."""
+        device = PureProDevice(sample_purepro_data, mock_coordinator)
+        sensor = device.hass_sensor
+        assert "state" in sensor
+        assert "last_log" in sensor
+        assert "online" in sensor
+
+
+class TestPureProDeviceAsyncMethods:
+    """Tests for PureProDevice async methods."""
+
+    @pytest.mark.usefixtures("enable_custom_integrations")
+    async def test_update_device_detail_purepro(
+        self, mock_coordinator, sample_purepro_data
+    ) -> None:
+        """Test update_device_detail uses PurePro detail endpoint."""
+        device = PureProDevice(sample_purepro_data, mock_coordinator)
+        mock_coordinator.account.request = AsyncMock(
+            return_value={"data": {"workStatus": "00"}}
+        )
+
+        result = await device.update_device_detail()
+
+        assert result["workStatus"] == "00"
+        mock_coordinator.account.request.assert_called_once_with(
+            "token/device/purepro/detail", {"deviceId": "purepro1"}
+        )
+
+    @pytest.mark.usefixtures("enable_custom_integrations")
+    async def test_select_mode_purepro(
+        self, mock_coordinator, sample_purepro_data
+    ) -> None:
+        """Test select_mode uses PurePro runMode endpoint."""
+        device = PureProDevice(sample_purepro_data, mock_coordinator)
+        mock_coordinator.account.request = AsyncMock(return_value={"returnCode": 0})
+        device.update_device_detail = AsyncMock(return_value={})
+
+        result = await device.select_mode("Flowing mode")
+
+        assert result is True
+        call_args = mock_coordinator.account.request.call_args
+        assert call_args[0][0] == "token/device/purepro/runMode"
+        assert call_args[0][1]["runMode"] == "CONTINUOUS_SPRING"
+        assert call_args[0][1]["deviceId"] == "purepro1"
+
+    @pytest.mark.usefixtures("enable_custom_integrations")
+    async def test_update_logs_purepro(
+        self, mock_coordinator, sample_purepro_data
+    ) -> None:
+        """Test update_logs uses PurePro stats/log/top5 endpoint."""
+        device = PureProDevice(sample_purepro_data, mock_coordinator)
+        mock_coordinator.account.request = AsyncMock(
+            return_value={"data": {"pureLogTop5": [{"event": "Cat drank water"}]}}
+        )
+
+        result = await device.update_logs()
+
+        assert len(result) == 1
+        assert result[0]["event"] == "Cat drank water"
+        mock_coordinator.account.request.assert_called_once_with(
+            "token/device/purepro/stats/log/top5", {"deviceId": "purepro1"}
+        )

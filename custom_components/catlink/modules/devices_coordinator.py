@@ -46,6 +46,11 @@ class DevicesCoordinator(DataUpdateCoordinator):
             if not did:
                 continue
             if self._device_ids is not None and did not in self._device_ids:
+                _LOGGER.debug(
+                    "Device %s (%s) skipped because it is not in configured device list",
+                    dat.get("deviceName"),
+                    did,
+                )
                 continue
             additional_config = next(
                 (cfg for cfg in self.additional_config if cfg.mac == dat.get("mac")),

@@ -28,6 +28,18 @@ class FeederDevice(LogsMixin, Device):
     ) -> None:
         """Initialize the device."""
         super().__init__(dat, coordinator, additional_config)
+        self._portions = 1
+
+    @property
+    def portions(self) -> int:
+        """Return the number of portions."""
+        return self._portions
+
+    @portions.setter
+    def portions(self, value: int) -> None:
+        """Set the number of portions."""
+        self._portions = int(value)
+        _LOGGER.debug("Feeder %s portions set to %s", self.name, self._portions)
 
     @property
     def weight(self) -> int:
@@ -119,7 +131,7 @@ class FeederDevice(LogsMixin, Device):
         """Food out of the device."""
         api = "token/device/feeder/foodOut"
         pms = {
-            "footOutNum": 5,
+            "footOutNum": self.portions,
             "deviceId": self.id,
         }
         rdt = await self.account.request(api, pms, "POST")
@@ -167,6 +179,19 @@ class FeederDevice(LogsMixin, Device):
             "feed": {
                 "icon": "mdi:food",
                 "async_press": self.food_out,
+            }
+        }
+
+    @property
+    def hass_number(self) -> dict:
+        """Return the device numbers."""
+        return {
+            "portions": {
+                "name": "Portions",
+                "icon": "mdi:counter",
+                "min": 1,
+                "max": 10,
+                "step": 1,
             }
         }
 

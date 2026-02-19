@@ -138,8 +138,9 @@ class Helper:
             hass.data[DOMAIN]["coordinators"].values()
         )
         for coordinator in coordinators:
-            for sta in coordinator.data.values():
-                await coordinator.update_hass_entities(domain, sta)
+            if coordinator.data is not None:
+                for sta in coordinator.data.values():
+                    await coordinator.update_hass_entities(domain, sta)
 
     @staticmethod
     def async_setup_entry_for(domain: str):
@@ -159,7 +160,7 @@ class Helper:
             coordinator = hass.data[DOMAIN]["entry_coordinators"].get(
                 config_entry.entry_id
             )
-            if coordinator is not None:
+            if coordinator is not None and coordinator.data is not None:
                 for sta in coordinator.data.values():
                     await coordinator.update_hass_entities(domain, sta)
 
