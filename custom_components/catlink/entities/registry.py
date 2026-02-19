@@ -2,6 +2,7 @@
 
 from .binary import CatlinkBinarySensorEntity
 from .button import CatlinkButtonEntity
+from .number import CatlinkNumberEntity
 from .select import CatlinkSelectEntity
 from .sensor import CatlinkSensorEntity
 from .switch import CatlinkSwitchEntity
@@ -12,4 +13,5 @@ DOMAIN_ENTITY_CLASSES: dict[str, type] = {
     "switch": CatlinkSwitchEntity,
     "select": CatlinkSelectEntity,
     "button": CatlinkButtonEntity,
+    "number": CatlinkNumberEntity,
 }
