@@ -98,8 +98,10 @@ class Account:
         kws = {
             "timeout": 60,
             "headers": {
-                "language": self.get_config(CONF_LANGUAGE, "en_GB"),
-                "User-Agent": "okhttp/3.10.0",
+                "language": self.get_config(CONF_LANGUAGE, "en_US"),
+                "User-Agent": "CATLINK/4.1.5 (iPhone; iOS 26.2.1; Scale/3.00)",
+                "app_version": "4.1.5",
+                "system_version": "26.2.1",
                 "token": self.token,
             },
         }
@@ -121,6 +123,14 @@ class Account:
             req = await self.http.request(method, url, **kws)
             result = await req.json() or {}
             _LOGGER.debug("API response %s %s: %s", method, api, result)
+            
+            # Handle token expiration (1002: Illegal token)
+            if result.get("returnCode") == 1002 and not kwargs.get("_retried"):
+                _LOGGER.info("Token expired (1002), attempting re-login for %s", self.phone)
+                if await self.async_login():
+                    kwargs["_retried"] = True
+                    return await self.request(api, pms, method, **kwargs)
+            
             return result
         except (ClientConnectorError, TimeoutError) as exc:  # noqa: UP041
             _LOGGER.error("Request api failed: %s", [method, url, pms, exc])
