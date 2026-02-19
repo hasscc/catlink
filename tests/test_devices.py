@@ -726,9 +726,22 @@ class TestFeederDeviceAsyncMethods:
         mock_coordinator.account.request.assert_called_once()
         call_args = mock_coordinator.account.request.call_args
         assert call_args[0][0] == "token/device/feeder/foodOut"
-        assert call_args[0][1]["footOutNum"] == 5
+        assert call_args[0][1]["footOutNum"] == 1
         assert call_args[0][1]["deviceId"] == "feeder1"
         device.update_device_detail.assert_called_once()
+
+    @pytest.mark.usefixtures("enable_custom_integrations")
+    async def test_food_out_custom_portions(self, mock_coordinator, sample_feeder_data) -> None:
+        """Test food_out uses custom portion value."""
+        device = FeederDevice(sample_feeder_data, mock_coordinator)
+        device.portions = 3
+        mock_coordinator.account.request = AsyncMock(return_value={"returnCode": 0})
+        device.update_device_detail = AsyncMock(return_value={})
+
+        await device.food_out()
+
+        call_args = mock_coordinator.account.request.call_args
+        assert call_args[0][1]["footOutNum"] == 3
 
     @pytest.mark.usefixtures("enable_custom_integrations")
     async def test_food_out_api_error_sets_action_error(
