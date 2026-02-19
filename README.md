@@ -30,6 +30,7 @@
 - [Supported Devices and Operations](#supported-devices-and-operations)
   - [Scooper SE](#supported-devices-and-operations)
   - [Scooper PRO](#supported-devices-and-operations)
+  - [PurePro Fountain](#supported-devices-and-operations)
 - [How to Configure?](#how-to-configure)
 - [Services (Optional)](#services-optional)
 - [Changelog](#changelog)
@@ -146,24 +147,40 @@ wget -O - https://get.hacs.vip | DOMAIN=catlink REPO_PATH=hasscc/catlink ARCHIVE
 
 #### Additional supported devices
 
-<div style="display: flex; justify-content: space-around;">
+<div style="display: flex; justify-content: space-between; flex-wrap: nowrap; gap: 16px;">
 
-  <div style="text-align: center; width: 45%;">
+  <div style="text-align: center; width: 33.33%;">
     <h3>Open-X/C08</h3>
     <img src="https://www.catlinkus.com/cdn/shop/files/OPENX9_610x610_crop_center.webp?v=1767769832" alt="Open-X/C08" width="150">
     <h4>Operations</h4>
     <ul style="text-align: left;">
-      <li>Changing operation mode (Auto, Manual, Scheduled)</li>
+      <li>Operation Modes (Auto, Manual, Scheduled)</li>
       <li>Actions (Clean, Pause, Cancel, Pave)</li>
-      <li>Litter weight, remaining days, and deodorant countdown</li>
-      <li>Quiet mode, child lock, indicator light, keypad tone</li>
-      <li>Notice switches and pet stats</li>
+      <li>Litter data & Deodorant countdown</li>
+      <li>Quiet mode, Child lock, Light, Tone</li>
+      <li>Pet stats & Notice switches</li>
       <li>Entities: sensor, binary sensor, select, switch, button</li>
     </ul>
   </div>
 
-  <div style="text-align: center; width: 45%;">
-    <h3>Scooper Pro Ultra (limited support)</h3>
+  <div style="text-align: center; width: 33.33%;">
+    <h3>PurePro Fountain</h3>
+    <img src="https://www.catlinkus.com/cdn/shop/files/imgi_6_1_800x800_0f2d3807-c768-4891-a375-f56c0c9af190_610x610_crop_center.webp?v=1767511590" alt="PurePro Fountain" width="150">
+    <h4>Operations</h4>
+    <ul style="text-align: left;">
+      <li>Operation Modes (Flowing, Eco, Smart)</li>
+      <li>Water Level & Filter Life</li>
+      <li>Water Temperature</li>
+      <li>UV Sterilization tracking (UV_active)</li>
+      <li>Heating, Light & Hair cleaning status</li>
+      <li>Drinking Logs & Log Book</li>
+      <li>Online status</li>
+      <li>Entities: sensor, binary sensor, select</li>
+    </ul>
+  </div>
+
+  <div style="text-align: center; width: 33.33%;">
+    <h3>Scooper Pro Ultra (limited)</h3>
     <img src="https://www.catlinkus.com/cdn/shop/files/ULTRA3_832ba0c1-c1b6-4ec0-ba8a-6ec5122897dd_610x610_crop_center.webp?v=1768480746" alt="Scooper Pro Ultra" width="150">
     <h4>Operations</h4>
     <ul style="text-align: left;">

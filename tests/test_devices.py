@@ -10,6 +10,7 @@ from custom_components.catlink.devices.litterbox import LitterBox
 from custom_components.catlink.devices.registry import create_device
 from custom_components.catlink.devices.scooper import ScooperDevice
 from custom_components.catlink.devices.scooper_pro_ultra import ScooperProUltraDevice
+from custom_components.catlink.devices.purepro import PureProDevice
 from custom_components.catlink.models.additional_cfg import AdditionalDeviceConfig
 import pytest
 
@@ -80,6 +81,18 @@ def sample_pro_ultra_data():
         "model": "ScooperPROUltra",
         "deviceName": "ScooperPROUltra",
         "deviceType": "VISUAL_PRO_ULTRA",
+    }
+
+
+@pytest.fixture
+def sample_purepro_data():
+    """Sample PurePro device data."""
+    return {
+        "id": "purepro1",
+        "mac": "22:33:44:55:66:77",
+        "model": "Pure Pro",
+        "deviceName": "Cat Fountain",
+        "deviceType": "PUREPRO",
     }
 
 
@@ -950,3 +963,86 @@ class TestScooperDevice:
         assert "temperature" in sensor
         assert "humidity" in sensor
         assert "error" in sensor
+
+
+class TestPureProDevice:
+    """Tests for PureProDevice."""
+
+    def test_purepro_properties(self, mock_coordinator, sample_purepro_data) -> None:
+        """Test PureProDevice basic properties."""
+        device = PureProDevice(sample_purepro_data, mock_coordinator)
+        assert device.id == "purepro1"
+        assert device.name == "Cat Fountain"
+        assert device.type == "PUREPRO"
+
+    def test_purepro_modes(self, mock_coordinator, sample_purepro_data) -> None:
+        """Test PureProDevice modes."""
+        device = PureProDevice(sample_purepro_data, mock_coordinator)
+        modes = device.modes
+        assert modes["CONTINUOUS_SPRING"] == "Continuous"
+        assert modes["SMART_SPRING"] == "Smart"
+        assert modes["INTERMITTENT_SPRING"] == "Intermittent"
+
+    def test_purepro_hass_sensor(self, mock_coordinator, sample_purepro_data) -> None:
+        """Test PureProDevice hass_sensor structure."""
+        device = PureProDevice(sample_purepro_data, mock_coordinator)
+        sensor = device.hass_sensor
+        assert "state" in sensor
+        assert "last_log" in sensor
+        assert "online" in sensor
+
+
+class TestPureProDeviceAsyncMethods:
+    """Tests for PureProDevice async methods."""
+
+    @pytest.mark.usefixtures("enable_custom_integrations")
+    async def test_update_device_detail_purepro(
+        self, mock_coordinator, sample_purepro_data
+    ) -> None:
+        """Test update_device_detail uses PurePro detail endpoint."""
+        device = PureProDevice(sample_purepro_data, mock_coordinator)
+        mock_coordinator.account.request = AsyncMock(
+            return_value={"data": {"workStatus": "00"}}
+        )
+
+        result = await device.update_device_detail()
+
+        assert result["workStatus"] == "00"
+        mock_coordinator.account.request.assert_called_once_with(
+            "token/device/purepro/detail", {"deviceId": "purepro1"}
+        )
+
+    @pytest.mark.usefixtures("enable_custom_integrations")
+    async def test_select_mode_purepro(
+        self, mock_coordinator, sample_purepro_data
+    ) -> None:
+        """Test select_mode uses PurePro runMode endpoint."""
+        device = PureProDevice(sample_purepro_data, mock_coordinator)
+        mock_coordinator.account.request = AsyncMock(return_value={"returnCode": 0})
+        device.update_device_detail = AsyncMock(return_value={})
+
+        result = await device.select_mode("Continuous")
+
+        assert result is True
+        call_args = mock_coordinator.account.request.call_args
+        assert call_args[0][0] == "token/device/purepro/runMode"
+        assert call_args[0][1]["runMode"] == "CONTINUOUS_SPRING"
+        assert call_args[0][1]["deviceId"] == "purepro1"
+
+    @pytest.mark.usefixtures("enable_custom_integrations")
+    async def test_update_logs_purepro(
+        self, mock_coordinator, sample_purepro_data
+    ) -> None:
+        """Test update_logs uses PurePro stats/cats endpoint."""
+        device = PureProDevice(sample_purepro_data, mock_coordinator)
+        mock_coordinator.account.request = AsyncMock(
+            return_value={"data": {"cats": [{"name": "Zulu"}]}}
+        )
+
+        result = await device.update_logs()
+
+        assert len(result) == 1
+        assert result[0]["name"] == "Zulu"
+        mock_coordinator.account.request.assert_called_once_with(
+            "token/device/purepro/stats/cats", {"deviceId": "purepro1"}
+        )
