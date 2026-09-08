@@ -93,6 +93,7 @@ class Account:
 
     async def request(self, api, pms=None, method="GET", **kwargs) -> dict:
         """Request the api."""
+        retried = bool(kwargs.pop("_retried", False))
         method = method.upper()
         url = self.api_url(api)
         kws = {
@@ -122,18 +123,29 @@ class Account:
         try:
             req = await self.http.request(method, url, **kws)
             result = await req.json() or {}
-            _LOGGER.debug("API response %s %s: %s", method, api, result)
+            _LOGGER.debug(
+                "API response %s %s: returnCode=%s keys=%s",
+                method,
+                api,
+                result.get("returnCode"),
+                sorted(result),
+            )
             
             # Handle token expiration (1002: Illegal token)
-            if result.get("returnCode") == 1002 and not kwargs.get("_retried"):
-                _LOGGER.info("Token expired (1002), attempting re-login for %s", self.phone)
+            if result.get("returnCode") == 1002 and not retried:
+                _LOGGER.info("Token expired (1002), attempting re-login")
                 if await self.async_login():
                     kwargs["_retried"] = True
                     return await self.request(api, pms, method, **kwargs)
             
             return result
         except (ClientConnectorError, TimeoutError) as exc:  # noqa: UP041
-            _LOGGER.error("Request api failed: %s", [method, url, pms, exc])
+            _LOGGER.error(
+                "Request api failed: method=%s api=%s error=%s",
+                method,
+                api,
+                type(exc).__name__,
+            )
         return {}
 
     async def async_login(self) -> bool:
@@ -152,7 +164,10 @@ class Account:
         rsp = await self.request("login/password", pms, "POST")
         tok = rsp.get("data", {}).get("token")
         if not tok:
-            _LOGGER.error("Login %s failed: %s", self.phone, [rsp, pms])
+            _LOGGER.error(
+                "CATLINK login failed: returnCode=%s",
+                rsp.get("returnCode"),
+            )
             return False
         self._config.update(
             {
