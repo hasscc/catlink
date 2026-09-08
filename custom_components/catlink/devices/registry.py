@@ -10,6 +10,7 @@ from .litterbox import LitterBox
 from .scooper import ScooperDevice
 from .scooper_pro_ultra import ScooperProUltraDevice
 from .purepro import PureProDevice
+from .visual_c07 import VisualC07Device
 
 if TYPE_CHECKING:
     from ..models.additional_cfg import AdditionalDeviceConfig
@@ -21,6 +22,7 @@ DEVICE_TYPES: dict[str, type[Device]] = {
     "SCOOPER": ScooperDevice,
     "LITTER_BOX_599": LitterBox,  # SCOOPER C1
     "VISUAL_PRO_ULTRA": ScooperProUltraDevice,
+    "VISUAL_C07": VisualC07Device,
     "FEEDER": FeederDevice,
     "PUREPRO": PureProDevice,
 }
