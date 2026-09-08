@@ -124,4 +124,5 @@ async def test_camera_entity_returns_event_picture(device):
     )
 
     assert await entity.async_camera_image() == JPEG
+    assert entity.state == "idle"
     assert entity.name.endswith("Latest Event Picture")

@@ -11,7 +11,7 @@ if TYPE_CHECKING:
     from ..devices.base import Device
 
 
-class CatlinkCameraEntity(CatlinkEntity, Camera):
+class CatlinkCameraEntity(Camera, CatlinkEntity):
     """A still-image camera backed by a device callback."""
 
     def __init__(self, name, device: "Device", option=None) -> None:
