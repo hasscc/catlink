@@ -10,8 +10,7 @@ from aiohttp import ClientError
 
 from ..const import _LOGGER
 from ..models.additional_cfg import AdditionalDeviceConfig
-from ..models.api.logs import LogEntry
-from ..models.api.parse import parse_response
+
 from .base import Device
 from .mixins.logs import LogsMixin
 
@@ -412,13 +411,12 @@ class VisualC07Device(LogsMixin, Device):
         try:
             response = await self.account.request(api, params)
             data = response.get("data", {})
-            parsed = parse_response(data, "records", LogEntry, [])
-            if isinstance(parsed, list) and parsed and hasattr(parsed[0], "model_dump"):
-                raw_logs = [item.model_dump() for item in parsed]
-            elif isinstance(parsed, list):
-                raw_logs = parsed
-            else:
-                raw_logs = data.get("records") or []
+            raw_logs = data.get("records") if isinstance(data, dict) else []
+            if not isinstance(raw_logs, list) or response.get("returnCode") not in (
+                None,
+                0,
+            ):
+                raw_logs = []
         except (TypeError, ValueError) as exc:
             raw_logs = []
             _LOGGER.error("Got Visual C07 logs for %s failed: %s", self.name, exc)
@@ -428,7 +426,11 @@ class VisualC07Device(LogsMixin, Device):
         safe_keys = ("time", "event", "firstSection", "secondSection", "errkey")
         self.logs = [
             {
-                **{key: log.get(key) for key in safe_keys if key in log},
+                **{
+                    key: log.get(key)
+                    for key in safe_keys
+                    if isinstance(log.get(key), str)
+                },
                 "has_video": bool(
                     log.get("moveDetectId")
                     or log.get("video1Url")

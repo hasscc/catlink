@@ -18,6 +18,9 @@ class LogsMixin:
 
     async def _async_init_logs(self) -> None:
         """Initialize the logs coordinator. Call from async_init after super().async_init()."""
+        if getattr(self, "coordinator_logs", None) is not None:
+            await self.coordinator_logs.async_refresh()
+            return
         self.logs = []
         self.coordinator_logs = DataUpdateCoordinator(
             self.account.hass,

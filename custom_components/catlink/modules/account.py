@@ -95,6 +95,7 @@ class Account:
         """Request the api."""
         retried = bool(kwargs.pop("_retried", False))
         method = method.upper()
+        requested_method = method
         url = self.api_url(api)
         kws = {
             "timeout": 60,
@@ -107,8 +108,8 @@ class Account:
             },
         }
         kws.update(kwargs)
-        if pms is None:
-            pms = {}
+        original_params = {k: v for k, v in (pms or {}).items() if k not in ("sign", "noncestr", CONF_TOKEN)}
+        pms = dict(original_params)
         pms["noncestr"] = int(time.time() * 1000)
         if self.token:
             pms[CONF_TOKEN] = self.token
@@ -136,7 +137,7 @@ class Account:
                 _LOGGER.info("Token expired (1002), attempting re-login")
                 if await self.async_login():
                     kwargs["_retried"] = True
-                    return await self.request(api, pms, method, **kwargs)
+                    return await self.request(api, original_params, requested_method, **kwargs)
             
             return result
         except (ClientConnectorError, TimeoutError) as exc:  # noqa: UP041
@@ -216,7 +217,7 @@ class Account:
                 rsp = await self.request(api, {"type": "NONE"})
         dls = rsp.get("data", {}).get(CONF_DEVICES) or []
         if not dls:
-            _LOGGER.warning("Got devices for %s failed: %s", self.phone, rsp)
+            _LOGGER.warning("CATLINK device list empty: returnCode=%s", rsp.get("returnCode"))
         return dls
 
     async def get_cats(self, timezone_id: str | None = None) -> list:
@@ -235,7 +236,7 @@ class Account:
                 rsp = await self.request(api, params)
         cats = rsp.get("data", {}).get("cats") or []
         if not cats:
-            _LOGGER.warning("Got cats for %s failed: %s", self.phone, rsp)
+            _LOGGER.debug("CATLINK cat list empty: returnCode=%s", rsp.get("returnCode"))
         return cats
 
     async def get_cat_summary_simple(

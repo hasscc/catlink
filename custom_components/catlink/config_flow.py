@@ -44,6 +44,8 @@ def _device_label(dat: dict, supported: bool) -> str:
     model = dat.get("model", "")
     device_type = dat.get("deviceType", "")
     suffix = "Supported" if supported else "Limited support"
+    if device_type == "VISUAL_C07":
+        suffix = "Read-only: status, refill state, event picture"
     if model and model != name:
         return f"{name} ({model}) - {suffix}"
     return f"{name} ({device_type}) - {suffix}"
