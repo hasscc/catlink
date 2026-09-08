@@ -15,6 +15,7 @@ from homeassistant.const import CONF_DEVICES, CONF_PASSWORD, CONF_TOKEN
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import aiohttp_client
 from homeassistant.helpers.storage import Store
+from homeassistant.helpers.update_coordinator import UpdateFailed
 
 from ..const import (
     _LOGGER,
@@ -93,7 +94,9 @@ class Account:
 
     async def request(self, api, pms=None, method="GET", **kwargs) -> dict:
         """Request the api."""
+        retried = bool(kwargs.pop("_retried", False))
         method = method.upper()
+        requested_method = method
         url = self.api_url(api)
         kws = {
             "timeout": 60,
@@ -106,8 +109,8 @@ class Account:
             },
         }
         kws.update(kwargs)
-        if pms is None:
-            pms = {}
+        original_params = {k: v for k, v in (pms or {}).items() if k not in ("sign", "noncestr", CONF_TOKEN)}
+        pms = dict(original_params)
         pms["noncestr"] = int(time.time() * 1000)
         if self.token:
             pms[CONF_TOKEN] = self.token
@@ -122,18 +125,29 @@ class Account:
         try:
             req = await self.http.request(method, url, **kws)
             result = await req.json() or {}
-            _LOGGER.debug("API response %s %s: %s", method, api, result)
+            _LOGGER.debug(
+                "API response %s %s: returnCode=%s keys=%s",
+                method,
+                api,
+                result.get("returnCode"),
+                sorted(result),
+            )
             
             # Handle token expiration (1002: Illegal token)
-            if result.get("returnCode") == 1002 and not kwargs.get("_retried"):
-                _LOGGER.info("Token expired (1002), attempting re-login for %s", self.phone)
+            if result.get("returnCode") == 1002 and not retried:
+                _LOGGER.info("Token expired (1002), attempting re-login")
                 if await self.async_login():
                     kwargs["_retried"] = True
-                    return await self.request(api, pms, method, **kwargs)
+                    return await self.request(api, original_params, requested_method, **kwargs)
             
             return result
         except (ClientConnectorError, TimeoutError) as exc:  # noqa: UP041
-            _LOGGER.error("Request api failed: %s", [method, url, pms, exc])
+            _LOGGER.error(
+                "Request api failed: method=%s api=%s error=%s",
+                method,
+                api,
+                type(exc).__name__,
+            )
         return {}
 
     async def async_login(self) -> bool:
@@ -152,7 +166,10 @@ class Account:
         rsp = await self.request("login/password", pms, "POST")
         tok = rsp.get("data", {}).get("token")
         if not tok:
-            _LOGGER.error("Login %s failed: %s", self.phone, [rsp, pms])
+            _LOGGER.error(
+                "CATLINK login failed: returnCode=%s",
+                rsp.get("returnCode"),
+            )
             return False
         self._config.update(
             {
@@ -199,9 +216,11 @@ class Account:
         if eno == 1002:  # Illegal token
             if await self.async_login():
                 rsp = await self.request(api, {"type": "NONE"})
-        dls = rsp.get("data", {}).get(CONF_DEVICES) or []
+        if rsp.get("returnCode") != 0 or not isinstance(rsp.get("data"), dict):
+            raise UpdateFailed("CATLINK device inventory unavailable")
+        dls = rsp["data"].get(CONF_DEVICES) or []
         if not dls:
-            _LOGGER.warning("Got devices for %s failed: %s", self.phone, rsp)
+            _LOGGER.warning("CATLINK device list empty: returnCode=%s", rsp.get("returnCode"))
         return dls
 
     async def get_cats(self, timezone_id: str | None = None) -> list:
@@ -218,9 +237,11 @@ class Account:
         if eno == 1002:  # Illegal token
             if await self.async_login():
                 rsp = await self.request(api, params)
-        cats = rsp.get("data", {}).get("cats") or []
+        if rsp.get("returnCode") != 0 or not isinstance(rsp.get("data"), dict):
+            raise UpdateFailed("CATLINK cat inventory unavailable")
+        cats = rsp["data"].get("cats") or []
         if not cats:
-            _LOGGER.warning("Got cats for %s failed: %s", self.phone, rsp)
+            _LOGGER.debug("CATLINK cat list empty: returnCode=%s", rsp.get("returnCode"))
         return cats
 
     async def get_cat_summary_simple(

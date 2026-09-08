@@ -32,6 +32,7 @@ class DevicesCoordinator(DataUpdateCoordinator):
         self.account = account
         self.config_entry_id = config_entry_id
         self._subs = {}
+
         self._device_ids = device_ids
         self.additional_config = self.hass.data[DOMAIN]["config"].get(CONF_DEVICES, {})
         self.additional_config = [
@@ -41,6 +42,7 @@ class DevicesCoordinator(DataUpdateCoordinator):
     async def _async_update_data(self) -> dict:
         """Update data via API."""
         dls = await self.account.get_devices()
+        current_devices = {}
         for dat in dls:
             did = dat.get("id")
             if not did:
@@ -57,12 +59,13 @@ class DevicesCoordinator(DataUpdateCoordinator):
                 None,
             )
             old = self.hass.data[DOMAIN][CONF_DEVICES].get(did)
-            if old:
+            if old and old.coordinator is self:
                 dvc = old
                 dvc.update_data(dat)
             else:
                 dvc = create_device(dat, self, additional_config)
                 self.hass.data[DOMAIN][CONF_DEVICES][did] = dvc
+            current_devices[did] = dvc
             await dvc.async_init()
             for d in SUPPORTED_DOMAINS:
                 await self.update_hass_entities(d, dvc)
@@ -102,16 +105,31 @@ class DevicesCoordinator(DataUpdateCoordinator):
             cat_data["summary_simple"] = summary_map.get(pet_id, {})
             did = cat_data["id"]
             old = self.hass.data[DOMAIN][CONF_DEVICES].get(did)
-            if old:
+            if old and old.coordinator is self:
                 dvc = old
                 dvc.update_data(cat_data)
             else:
                 dvc = create_device(cat_data, self, None)
                 self.hass.data[DOMAIN][CONF_DEVICES][did] = dvc
+            current_devices[did] = dvc
             await dvc.async_init()
             for d in SUPPORTED_DOMAINS:
                 await self.update_hass_entities(d, dvc)
-        return self.hass.data[DOMAIN][CONF_DEVICES]
+        # Keep accounts isolated and retire only this entry's stale devices.
+        shared = self.hass.data[DOMAIN][CONF_DEVICES]
+        for did, dvc in list(shared.items()):
+            if dvc.coordinator is not self or did in current_devices:
+                continue
+            for key, entity in list(self._subs.items()):
+                if entity._device is dvc:
+                    if entity.hass is not None:
+                        await entity.async_remove()
+                    del self._subs[key]
+            logs = getattr(dvc, "coordinator_logs", None)
+            if logs is not None:
+                await logs.async_shutdown()
+            del shared[did]
+        return current_devices
 
     async def update_hass_entities(self, domain, dvc) -> None:
         """Update Home Assistant entities."""

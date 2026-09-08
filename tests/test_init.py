@@ -51,6 +51,7 @@ def mock_coordinator():
         instance = mock.return_value
         instance.name = f"{DOMAIN}-86-13812345678-devices"
         instance.async_refresh = AsyncMock()
+        instance.async_shutdown = AsyncMock()
         instance.data = {}
         yield mock
 

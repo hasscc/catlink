@@ -5,3 +5,4 @@ pytest-homeassistant-custom-component>=0.13.300
 homeassistant>=2024.1.0
 phonenumbers>=8.13.0
 pydantic>=2.0
+PyTurboJPEG>=1.8.3

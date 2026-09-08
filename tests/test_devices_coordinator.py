@@ -123,6 +123,7 @@ class TestDevicesCoordinatorAsyncUpdateData:
         existing_device = MagicMock()
         existing_device.id = "dev1"
         existing_device.name = "Old Name"
+        existing_device.coordinator = coordinator
         existing_device.update_data = MagicMock()
         existing_device.async_init = AsyncMock()
         coordinator_hass_data["devices"]["dev1"] = existing_device

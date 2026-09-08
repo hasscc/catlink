@@ -40,7 +40,7 @@ class Device:
         """Update device data."""
         self.data = dat
         self._handle_listeners()
-        _LOGGER.info("Update device data: %s", dat)
+        _LOGGER.debug("Updated CATLINK device data for type %s", self.type)
 
     def _handle_listeners(self) -> None:
         """Notify all registered listeners to refresh their state."""

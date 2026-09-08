@@ -22,6 +22,11 @@ from homeassistant.core import HomeAssistant
 class TestDeviceLabel:
     """Tests for _device_label helper."""
 
+    def test_c07_is_selected_but_not_claimed_fully_supported(self):
+        from custom_components.catlink.const import SUPPORTED_DEVICE_TYPES
+        assert "VISUAL_C07" in SUPPORTED_DEVICE_TYPES
+        assert "Read-only" in _device_label({"deviceType": "VISUAL_C07"}, True)
+
     def test_device_label_with_name_and_model(self) -> None:
         """Test label when device has name and model."""
         dat = {

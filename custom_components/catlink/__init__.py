@@ -43,6 +43,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     await acc.async_check_auth()
     await coordinator.async_refresh()
 
+    # Discovery outlives the last entity and is stopped with this config entry.
+    entry.async_on_unload(coordinator.async_add_listener(lambda: None))
+
     hass.data[DOMAIN][CONF_ACCOUNTS][acc.uid] = acc
     hass.data[DOMAIN]["coordinators"][coordinator.name] = coordinator
     hass.data[DOMAIN]["entry_coordinators"][entry.entry_id] = coordinator
@@ -54,7 +57,19 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
-    await hass.config_entries.async_unload_platforms(entry, SUPPORTED_DOMAINS)
+    if not await hass.config_entries.async_unload_platforms(entry, SUPPORTED_DOMAINS):
+        return False
+
+    coordinator = hass.data[DOMAIN]["entry_coordinators"].get(entry.entry_id)
+    devices = hass.data[DOMAIN][CONF_DEVICES]
+    for did, device in list(devices.items()):
+        if device.coordinator is coordinator:
+            logs = getattr(device, "coordinator_logs", None)
+            if logs is not None:
+                await logs.async_shutdown()
+            del devices[did]
+    if coordinator is not None:
+        await coordinator.async_shutdown()
 
     uid = f"{entry.data.get('phone_iac', '86')}-{entry.data.get('phone', '')}"
     if uid in hass.data[DOMAIN][CONF_ACCOUNTS]:

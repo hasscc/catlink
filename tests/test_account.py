@@ -1,6 +1,7 @@
 """Tests for CatLink Account module."""
 
 from datetime import timedelta
+import logging
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -256,6 +257,73 @@ class TestAccountRequest:
         assert CONF_TOKEN in params
         assert params[CONF_TOKEN] == "existing-token"
 
+    @pytest.mark.usefixtures("enable_custom_integrations")
+    async def test_request_logs_response_metadata_not_secrets(
+        self, account, caplog
+    ) -> None:
+        """Debug logging must not persist response tokens or media locators."""
+        response = MagicMock()
+        response.json = AsyncMock(
+            return_value={
+                "returnCode": 0,
+                "data": {
+                    "token": "response-secret-token",
+                    "moveDetectId": "private-event-id",
+                    "video1Url": "https://private.invalid/video",
+                },
+            }
+        )
+        account.http.request = AsyncMock(return_value=response)
+
+        with caplog.at_level(logging.DEBUG):
+            await account.request("token/private/media", {})
+
+        assert "response-secret-token" not in caplog.text
+        assert "private-event-id" not in caplog.text
+        assert "private.invalid" not in caplog.text
+        assert "returnCode=0" in caplog.text
+
+    @pytest.mark.usefixtures("enable_custom_integrations")
+    async def test_request_failure_log_omits_signed_params(
+        self, account, caplog
+    ) -> None:
+        """Transport failures must not log tokens, signatures, or request values."""
+        account.http.request = AsyncMock(side_effect=TimeoutError())
+
+        with caplog.at_level(logging.ERROR):
+            result = await account.request(
+                "token/private/media", {"picId": "private-picture-id"}
+            )
+
+        assert result == {}
+        assert "existing-token" not in caplog.text
+        assert "private-picture-id" not in caplog.text
+        assert "sign" not in caplog.text.lower()
+
+    @pytest.mark.usefixtures("enable_custom_integrations")
+    async def test_request_reauth_retry_does_not_forward_internal_flag(
+        self, account
+    ) -> None:
+        """The one-shot retry marker is internal, not an aiohttp keyword."""
+        expired = MagicMock()
+        expired.json = AsyncMock(return_value={"returnCode": 1002, "data": {}})
+        success = MagicMock()
+        success.json = AsyncMock(return_value={"returnCode": 0, "data": {}})
+        account.http.request = AsyncMock(side_effect=[expired, success])
+
+        with patch.object(
+            account, "async_login", new_callable=AsyncMock, return_value=True
+        ) as mock_login:
+            result = await account.request("token/device/list", {})
+
+        assert result["returnCode"] == 0
+        mock_login.assert_awaited_once()
+        assert account.http.request.await_count == 2
+        assert all(
+            "_retried" not in awaited.kwargs
+            for awaited in account.http.request.await_args_list
+        )
+
 
 class TestAccountAsyncLogin:
     """Tests for Account async_login."""
@@ -278,14 +346,17 @@ class TestAccountAsyncLogin:
                 mock_check.assert_called_once_with(True)
 
     @pytest.mark.usefixtures("enable_custom_integrations")
-    async def test_login_fails_no_token(self, account) -> None:
+    async def test_login_fails_no_token(self, account, caplog) -> None:
         """Test async_login returns False when no token in response."""
         with patch.object(account, "request", new_callable=AsyncMock) as mock_request:
             mock_request.return_value = {"data": {}, "returnCode": 0}
-            result = await account.async_login()
+            with caplog.at_level(logging.ERROR):
+                result = await account.async_login()
 
             assert result is False
             assert account.token == ""
+            assert "13812345678" not in caplog.text
+            assert "password" not in caplog.text.lower()
 
 
 class TestAccountGetDevices:
