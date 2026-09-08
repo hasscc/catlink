@@ -98,6 +98,7 @@ async def test_platforms_loaded(init_integration: MockConfigEntry) -> None:
             "switch",
             "select",
             "button",
+            "number",
         ]
 
 
