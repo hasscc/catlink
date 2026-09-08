@@ -62,7 +62,10 @@ async def test_empty_inventory_never_logs_payload(account, caplog, loader):
         }
     )
     with caplog.at_level(logging.DEBUG, logger="custom_components.catlink"):
-        assert await getattr(account, loader)() == []
+        from homeassistant.helpers.update_coordinator import UpdateFailed
+
+        with pytest.raises(UpdateFailed):
+            await getattr(account, loader)()
     assert "RESPONSE-SECRET" not in caplog.text
     assert "PRIVATE-GRANT" not in caplog.text
     assert "test-phone" not in caplog.text
@@ -173,3 +176,60 @@ async def test_unload_failure_keeps_runtime(coord):
     ):
         assert await async_unload_entry(coord.hass, entry) is False
     assert domain["entry_coordinators"][entry.entry_id] is coord
+
+
+@pytest.mark.asyncio
+@pytest.mark.usefixtures("enable_custom_integrations")
+async def test_real_entry_rediscovers_after_last_entity_disappears(hass):
+    from pytest_homeassistant_custom_component.common import MockConfigEntry
+    from homeassistant.helpers.update_coordinator import UpdateFailed
+    from custom_components.catlink import async_setup
+
+    await async_setup(hass, {})
+    acc = MagicMock(spec=Account)
+    acc.hass = hass
+    acc.uid = "86-synthetic"
+    acc.update_interval = datetime.timedelta(seconds=60)
+    acc.async_check_auth = AsyncMock()
+    acc.get_devices = AsyncMock(return_value=[DATA])
+    acc.get_cats = AsyncMock(return_value=[])
+    acc.request = AsyncMock(
+        return_value={
+            "returnCode": 0,
+            "data": {
+                "deviceInfo": {"online": True, "workStatus": "00"},
+                "info": {},
+                "records": [],
+            },
+        }
+    )
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={"phone_iac": "86", "phone": "synthetic"},
+        options={"device_ids": [DATA["id"]]},
+    )
+    entry.add_to_hass(hass)
+    with patch("custom_components.catlink.Account", return_value=acc):
+        assert await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+        coord = hass.data[DOMAIN]["entry_coordinators"][entry.entry_id]
+        assert len(coord._subs) == 22
+        original = coord.data[DATA["id"]]
+        acc.get_devices.side_effect = UpdateFailed("temporary outage")
+        await coord.async_refresh()
+        assert not coord.last_update_success
+        assert coord.data[DATA["id"]] is original and len(coord._subs) == 22
+        acc.get_devices.side_effect = None
+        acc.get_devices.return_value = []
+        await coord.async_refresh()
+        await hass.async_block_till_done()
+        assert coord.data == {} and coord._subs == {}
+        assert coord._listeners and coord._unsub_refresh is not None
+        acc.get_devices.return_value = [DATA]
+        await coord.async_refresh()
+        await hass.async_block_till_done()
+        assert DATA["id"] in coord.data and len(coord._subs) == 22
+        assert await hass.config_entries.async_unload(entry.entry_id)
+        await hass.async_block_till_done()
+        assert coord._unsub_refresh is None
+        assert not hass.data[DOMAIN]["devices"]

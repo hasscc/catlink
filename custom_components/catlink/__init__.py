@@ -43,6 +43,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     await acc.async_check_auth()
     await coordinator.async_refresh()
 
+    # Discovery outlives the last entity and is stopped with this config entry.
+    entry.async_on_unload(coordinator.async_add_listener(lambda: None))
+
     hass.data[DOMAIN][CONF_ACCOUNTS][acc.uid] = acc
     hass.data[DOMAIN]["coordinators"][coordinator.name] = coordinator
     hass.data[DOMAIN]["entry_coordinators"][entry.entry_id] = coordinator

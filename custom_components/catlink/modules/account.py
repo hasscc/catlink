@@ -15,6 +15,7 @@ from homeassistant.const import CONF_DEVICES, CONF_PASSWORD, CONF_TOKEN
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import aiohttp_client
 from homeassistant.helpers.storage import Store
+from homeassistant.helpers.update_coordinator import UpdateFailed
 
 from ..const import (
     _LOGGER,
@@ -215,7 +216,9 @@ class Account:
         if eno == 1002:  # Illegal token
             if await self.async_login():
                 rsp = await self.request(api, {"type": "NONE"})
-        dls = rsp.get("data", {}).get(CONF_DEVICES) or []
+        if rsp.get("returnCode") != 0 or not isinstance(rsp.get("data"), dict):
+            raise UpdateFailed("CATLINK device inventory unavailable")
+        dls = rsp["data"].get(CONF_DEVICES) or []
         if not dls:
             _LOGGER.warning("CATLINK device list empty: returnCode=%s", rsp.get("returnCode"))
         return dls
@@ -234,7 +237,9 @@ class Account:
         if eno == 1002:  # Illegal token
             if await self.async_login():
                 rsp = await self.request(api, params)
-        cats = rsp.get("data", {}).get("cats") or []
+        if rsp.get("returnCode") != 0 or not isinstance(rsp.get("data"), dict):
+            raise UpdateFailed("CATLINK cat inventory unavailable")
+        cats = rsp["data"].get("cats") or []
         if not cats:
             _LOGGER.debug("CATLINK cat list empty: returnCode=%s", rsp.get("returnCode"))
         return cats

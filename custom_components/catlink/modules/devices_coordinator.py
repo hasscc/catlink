@@ -32,6 +32,7 @@ class DevicesCoordinator(DataUpdateCoordinator):
         self.account = account
         self.config_entry_id = config_entry_id
         self._subs = {}
+
         self._device_ids = device_ids
         self.additional_config = self.hass.data[DOMAIN]["config"].get(CONF_DEVICES, {})
         self.additional_config = [
