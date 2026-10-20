@@ -7,6 +7,7 @@ from .base import CatlinkEntity
 
 
 class CatlinkNumberEntity(CatlinkEntity, NumberEntity):
+    _entity_id_domain = "number"
     """Number entity for CatLink."""
 
     def __init__(self, name, device: Device, option=None) -> None:

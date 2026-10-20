@@ -8,6 +8,8 @@ from .binary import CatlinkBinaryEntity
 class CatlinkSwitchEntity(CatlinkBinaryEntity, SwitchEntity):
     """Switch entity for CatLink."""
 
+    _entity_id_domain = "switch"
+
     async def async_turn_switch(self, on=True, **kwargs):
         """Turn the entity on/off."""
         ret = False

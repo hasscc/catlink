@@ -28,7 +28,11 @@ class CatlinkEntity(CoordinatorEntity):
         self._attr_unique_id = f"{self._attr_device_id}-{name}"
         mac = device.mac[-4:] if device.mac else device.id
         object_id = f"{device.type}_{mac}_{name}"
-        self.entity_id = f"{DOMAIN}.{slugify(object_id)}"
+        # entity_id MUST carry the platform domain (sensor., select., ...),
+        # not the integration domain - HA rejects/reports "wrong domain"
+        # ids and removes support for them in 2027.5 (issue #61).
+        domain = getattr(self, "_entity_id_domain", DOMAIN)
+        self.entity_id = f"{domain}.{slugify(object_id)}"
         self._attr_icon = self._option.get("icon")
         self._attr_device_class = self._option.get("class")
         self._attr_native_unit_of_measurement = self._option.get("unit")

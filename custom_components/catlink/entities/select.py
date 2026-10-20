@@ -13,6 +13,8 @@ if TYPE_CHECKING:
 class CatlinkSelectEntity(CatlinkEntity, SelectEntity):
     """Select entity for CatLink."""
 
+    _entity_id_domain = "select"
+
     def __init__(self, name, device: "Device", option=None) -> None:
         """Initialize the entity."""
         super().__init__(name, device, option)

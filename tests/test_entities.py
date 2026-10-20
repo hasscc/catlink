@@ -53,6 +53,27 @@ def real_device(mock_coordinator):
     return device
 
 
+class TestEntityIdDomain:
+    """Entity ids must use the platform domain, not 'catlink.' (issue #61)."""
+
+    @pytest.mark.parametrize(
+        "cls,expected_domain",
+        [
+            (CatlinkSensorEntity, "sensor"),
+            (CatlinkBinarySensorEntity, "binary_sensor"),
+            (CatlinkSwitchEntity, "switch"),
+            (CatlinkSelectEntity, "select"),
+            (CatlinkButtonEntity, "button"),
+        ],
+    )
+    def test_entity_id_uses_platform_domain(
+        self, hass, real_device, mock_coordinator, cls, expected_domain
+    ) -> None:
+        """Each entity class must build entity_id with its own platform domain."""
+        entity = cls("state", real_device, {})
+        assert entity.entity_id.startswith(f"{expected_domain}.")
+
+
 class TestCatlinkEntity:
     """Tests for CatlinkEntity base class."""
 

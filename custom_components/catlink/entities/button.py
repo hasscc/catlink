@@ -8,6 +8,8 @@ from .base import CatlinkEntity
 class CatlinkButtonEntity(CatlinkEntity, ButtonEntity):
     """Button entity for CatLink."""
 
+    _entity_id_domain = "button"
+
     async def async_press(self):
         """Press the button."""
         ret = False
