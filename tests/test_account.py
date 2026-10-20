@@ -124,15 +124,20 @@ class TestAccountApiUrl:
         url = account.api_url("token/device/list")
         assert url == f"{DEFAULT_API_BASE.rstrip('/')}/token/device/list"
 
-    def test_api_url_absolute_https(self, account) -> None:
-        """Test api_url returns full URL as-is for https."""
-        url = account.api_url("https://other.api/endpoint")
-        assert url == "https://other.api/endpoint"
+    def test_api_url_absolute_https_untrusted_blocked(self, account) -> None:
+        """Test api_url rejects absolute URLs to non-CatLink hosts (token exfil)."""
+        with pytest.raises(ValueError):
+            account.api_url("https://other.api/endpoint")
 
-    def test_api_url_absolute_http(self, account) -> None:
-        """Test api_url returns full URL as-is for http."""
-        url = account.api_url("http://other.api/endpoint")
-        assert url == "http://other.api/endpoint"
+    def test_api_url_absolute_http_blocked(self, account) -> None:
+        """Test api_url rejects insecure http URLs."""
+        with pytest.raises(ValueError):
+            account.api_url("http://app-sgp.catlinks.cn/api/token/device/list")
+
+    def test_api_url_absolute_trusted_host_allowed(self, account) -> None:
+        """Test api_url accepts absolute URLs on official CatLink hosts."""
+        url = account.api_url("https://app-sgp.catlinks.cn/api/token/device/list")
+        assert url == "https://app-sgp.catlinks.cn/api/token/device/list"
 
     def test_api_url_custom_base(self, hass, mock_http_session) -> None:
         """Test api_url uses custom API base from config."""
@@ -237,6 +242,28 @@ class TestAccountRequest:
         assert result == {"returnCode": 0, "data": {}}
         params = request_kwargs.get("params") or {}
         assert "noncestr" in params
+
+    @pytest.mark.usefixtures("enable_custom_integrations")
+    async def test_request_does_not_mutate_caller_params(self, account) -> None:
+        """Request must not inject token/sign into the caller's dict (leak into logs)."""
+        sent = {}
+
+        async def mock_request(method, url, **kwargs):
+            sent.update(kwargs)
+            resp = MagicMock()
+            resp.json = AsyncMock(return_value={"returnCode": 0, "data": {}})
+            return resp
+
+        account.http.request = mock_request
+        caller_pms = {"deviceId": "dev1"}
+        await account.request("token/device/info", caller_pms)
+
+        # caller dict stays clean: no token, no sign, no noncestr
+        assert caller_pms == {"deviceId": "dev1"}
+        # but what was actually sent carries them
+        params = sent.get("params") or {}
+        assert CONF_TOKEN in params
+        assert "sign" in params
 
     @pytest.mark.usefixtures("enable_custom_integrations")
     async def test_request_includes_token_in_params(self, account) -> None:

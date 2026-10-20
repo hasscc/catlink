@@ -5,7 +5,7 @@
 <div align="center">
   <img src="https://play-lh.googleusercontent.com/eHPhN_fUDhdxMK4JAvlzjB5Mh-H72crLn2U3Khk37lzolNg2CTDgZXkB5bjPiM3CDqM" alt="CatLINK Logo" width="100">
   <span style="font-size: 50px; margin: 0 20px;">+</span>
-  <img src="https://upload.wikimedia.org/wikipedia/en/thumb/4/49/Home_Assistant_logo_%282023%29.svg/2048px-Home_Assistant_logo_%282023%29.svg.png" alt="Home Assistant Logo" width="100">
+  <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/home-assistant.svg" alt="Home Assistant Logo" width="100">
 </div>
 
 <div align="center">
@@ -16,7 +16,7 @@
 
 <div align="right">
   <span style="margin-right: 10px; font-size: 16px; font-style: italic">Spotted the issue?</span>
-  <a href="https://github.com/hasscc/catlink/issues/new?assignees=&labels=bug%2Ctriage&template=bug_report.md&title=%5BBug%5D%3A+" target="_blank" style="text-decoration: none;"><span style="background-color: #f44b42; border: none; color: white; padding: 10px 20px; text-align: center; text-decoration: none; display: inline-block; font-size: 16px; margin: 4px 2px; cursor: pointer; border-radius: 4px;">Report a Bug</span></a>
+  <a href="https://github.com/Sylph/catlink/issues/new?assignees=&labels=bug%2Ctriage&template=bug_report.md&title=%5BBug%5D%3A+" target="_blank" style="text-decoration: none;"><span style="background-color: #f44b42; border: none; color: white; padding: 10px 20px; text-align: center; text-decoration: none; display: inline-block; font-size: 16px; margin: 4px 2px; cursor: pointer; border-radius: 4px;">Report a Bug</span></a>
 </div>
 
 ---
@@ -60,28 +60,23 @@ The CatLINK custom integration provides seamless support for integrating your Ca
 # Installation:
 
 ### Easy way
-[![HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?category=integration&owner=hasscc&repository=catlink)
+[![HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?category=integration&owner=Sylph&repository=catlink)
 
 ### Manually
 
 #### Method 1: Manually installation via Samba / SFTP
 > Download and copy `custom_components/catlink` folder to `custom_components` folder in your HomeAssistant config folder
 
-#### Method 2: Onkey shell via SSH / Terminal & SSH add-on
-```shell
-wget -O - https://get.hacs.vip | DOMAIN=catlink REPO_PATH=hasscc/catlink ARCHIVE_TAG=main bash -
-```
+#### Method 2: Manual download from GitHub
+1. Download the release assets (or the source archive) from the [latest release](https://github.com/Sylph/catlink/releases)
+2. Extract it so you have a `custom_components/catlink` folder
+3. Copy that folder into your Home Assistant `config/custom_components/` directory
+4. Restart Home Assistant
 
-#### Method 3: shell_command service
-1. Copy this code to file `configuration.yaml`
-    ```yaml
-    shell_command:
-      update_catlink: |-
-        wget -O - https://get.hacs.vip | DOMAIN=catlink REPO_PATH=hasscc/catlink ARCHIVE_TAG=main bash -
-    ```
-2. Restart HA core
-3. Call this [`service: shell_command.update_catlink`](https://my.home-assistant.io/redirect/developer_call_service/?service=shell_command.update_catlink) in Developer Tools
-2. Restart HA core again
+> ⚠️ Previous versions of this README suggested installing via
+> `wget -O - https://get.hacs.vip | ... bash -`. **Do not use that** — piping a
+> remote script into a shell executes unreviewed code on your Home Assistant
+> host. The manual download above (or HACS) is the safe path.
 
 ## Supported Devices and Operations
 

@@ -5,6 +5,7 @@ import base64
 import datetime
 import hashlib
 import time
+from urllib.parse import urlparse
 
 from aiohttp import ClientConnectorError
 from cryptography.hazmat.backends import default_backend
@@ -84,12 +85,37 @@ class Account:
         )
         return Helper.calculate_update_interval(interval)
 
+    @staticmethod
+    def _is_trusted_api_host(host: str) -> bool:
+        """Return True if the host is an official CatLink API host."""
+        if not host:
+            return False
+        host = host.lower()
+        return host == "catlinks.cn" or host.endswith(".catlinks.cn")
+
     def api_url(self, api="") -> str:
-        """Return the full url of the api."""
-        if api[:6] == "https:" or api[:5] == "http:":
-            return api
+        """Return the full url of the api, restricted to trusted CatLink hosts.
+
+        Absolute URLs are only accepted when their host is an official
+        CatLink domain or the explicitly configured API base host, and
+        only over https. This keeps token-bearing requests (including the
+        `request_api` service) from being pointed at third-party servers.
+        """
         bas = self.get_config(CONF_API_BASE) or DEFAULT_API_BASE
-        return f"{bas.rstrip('/')}/{api.lstrip('/')}"
+        if api[:4] == "http":
+            url = api
+        else:
+            url = f"{bas.rstrip('/')}/{api.lstrip('/')}"
+        parsed = urlparse(url)
+        host = (parsed.hostname or "").lower()
+        if parsed.scheme != "https":
+            _LOGGER.error("Blocked insecure (non-https) API request: %s", host or url)
+            raise ValueError("CatLink API requests must use https")
+        base_host = (urlparse(bas).hostname or "").lower()
+        if not (self._is_trusted_api_host(host) or host == base_host):
+            _LOGGER.error("Blocked API request to untrusted host: %s", host)
+            raise ValueError("CatLink API host is not trusted")
+        return url
 
     async def request(self, api, pms=None, method="GET", **kwargs) -> dict:
         """Request the api."""
@@ -105,9 +131,12 @@ class Account:
                 "token": self.token,
             },
         }
+        # "_retried" is our internal retry flag; it must not reach aiohttp.
+        retried = bool(kwargs.pop("_retried", False))
         kws.update(kwargs)
-        if pms is None:
-            pms = {}
+        # Never mutate the caller's dict: adding token/sign in-place leaks the
+        # session token into every downstream log that prints the params.
+        pms = dict(pms or {})
         pms["noncestr"] = int(time.time() * 1000)
         if self.token:
             pms[CONF_TOKEN] = self.token
@@ -122,18 +151,22 @@ class Account:
         try:
             req = await self.http.request(method, url, **kws)
             result = await req.json() or {}
-            _LOGGER.debug("API response %s %s: %s", method, api, result)
+            _LOGGER.debug(
+                "API response %s %s: returnCode=%s",
+                method, api, result.get("returnCode"),
+            )
             
             # Handle token expiration (1002: Illegal token)
-            if result.get("returnCode") == 1002 and not kwargs.get("_retried"):
+            if result.get("returnCode") == 1002 and not retried:
                 _LOGGER.info("Token expired (1002), attempting re-login for %s", self.phone)
                 if await self.async_login():
                     kwargs["_retried"] = True
-                    return await self.request(api, pms, method, **kwargs)
+                    clean = {k: v for k, v in pms.items() if k not in ("token", "sign", "noncestr")}
+                    return await self.request(api, clean, method, **kwargs)
             
             return result
         except (ClientConnectorError, TimeoutError) as exc:  # noqa: UP041
-            _LOGGER.error("Request api failed: %s", [method, url, pms, exc])
+            _LOGGER.error("Request api failed: %s %s: %s", method, url, exc)
         return {}
 
     async def async_login(self) -> bool:
@@ -152,7 +185,12 @@ class Account:
         rsp = await self.request("login/password", pms, "POST")
         tok = rsp.get("data", {}).get("token")
         if not tok:
-            _LOGGER.error("Login %s failed: %s", self.phone, [rsp, pms])
+            _LOGGER.error(
+                "Login %s failed: returnCode=%s message=%s",
+                self.phone,
+                rsp.get("returnCode"),
+                rsp.get("message"),
+            )
             return False
         self._config.update(
             {
