@@ -128,7 +128,12 @@ class ScooperProUltraDevice(LitterDevice):
             rdt = []
             _LOGGER.error("Got device logs for %s failed: %s", self.name, exc)
         if not rdt:
-            _LOGGER.warning("Got device logs for %s failed: %s", self.name, rsp)
+            if rsp and not rsp.get("returnCode"):
+                # A successful response with an empty list just means no recent
+                # activity, so it is not a failure worth a warning on every poll.
+                _LOGGER.debug("No device logs for %s: %s", self.name, rsp)
+            else:
+                _LOGGER.warning("Got device logs for %s failed: %s", self.name, rsp)
         self.logs = rdt
         self._handle_listeners()
         return rdt

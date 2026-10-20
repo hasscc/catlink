@@ -146,3 +146,50 @@ class TestLogsMixinFetchLogs:
 
         assert result == []
         assert device.logs == []
+
+    @pytest.mark.usefixtures("enable_custom_integrations")
+    async def test_fetch_logs_successful_empty_list_does_not_warn(
+        self, mock_coordinator, sample_device_data, caplog
+    ) -> None:
+        """Test a successful response with no entries is not logged as a failure."""
+        device = LitterBox(sample_device_data, mock_coordinator)
+        device._handle_listeners = MagicMock()
+        mock_coordinator.account.request = AsyncMock(
+            return_value={
+                "returnCode": 0,
+                "msg": None,
+                "data": {"scooperLogTop5": []},
+                "success": True,
+            }
+        )
+
+        result = await device._fetch_logs(
+            "token/litterbox/stats/log/top5", "scooperLogTop5"
+        )
+
+        assert result == []
+        assert "failed" not in caplog.text
+
+    @pytest.mark.usefixtures("enable_custom_integrations")
+    @pytest.mark.parametrize(
+        "response",
+        [
+            {},
+            {"returnCode": 1, "msg": "error", "data": {}, "success": False},
+        ],
+        ids=["request_failed", "error_return_code"],
+    )
+    async def test_fetch_logs_failed_request_warns(
+        self, mock_coordinator, sample_device_data, caplog, response
+    ) -> None:
+        """Test a failed request or an error return code is still a warning."""
+        device = LitterBox(sample_device_data, mock_coordinator)
+        device._handle_listeners = MagicMock()
+        mock_coordinator.account.request = AsyncMock(return_value=response)
+
+        result = await device._fetch_logs(
+            "token/litterbox/stats/log/top5", "scooperLogTop5"
+        )
+
+        assert result == []
+        assert "Got device logs for Living Room Litter failed" in caplog.text

@@ -48,9 +48,11 @@ class LitterDevice(LogsMixin, Device):
         """Return the litter weight."""
         litter_weight = 0.0
         try:
-            cat_litter_weight = self.detail.get(
-                "catLitterWeight", self.empty_litter_box_weight
-            )
+            cat_litter_weight = self.detail.get("catLitterWeight")
+            if cat_litter_weight is None:
+                # The API sends the key with a null value on some models, so the
+                # dict.get() default never fires - guard explicitly.
+                cat_litter_weight = self.empty_litter_box_weight
             litter_weight = cat_litter_weight - self.empty_litter_box_weight
             self._litter_weight_during_day.append(litter_weight)
             if litter_weight == 0.0:
@@ -77,9 +79,10 @@ class LitterDevice(LogsMixin, Device):
     def total_clean_time(self) -> int:
         """Return the total clean time."""
         try:
-            return int(self.detail.get("inductionTimes", 0)) + int(
-                self.detail.get("manualTimes", 0)
-            )
+            auto = self.detail.get("inductionTimes")
+            man = self.detail.get("manualTimes")
+            # API can return these present-but-null; int(None) would raise.
+            return int(auto or 0) + int(man or 0)
         except Exception as exc:
             _LOGGER.error("Get total clean time failed: %s", exc)
             return 0
@@ -88,8 +91,8 @@ class LitterDevice(LogsMixin, Device):
     def manual_clean_time(self) -> int:
         """Return the manual clean time."""
         try:
-            raw = self.detail.get("manualTimes", 0)
-            result = int(raw)
+            raw = self.detail.get("manualTimes")
+            result = int(raw) if raw is not None else 0
             if result == 0:
                 _LOGGER.debug(
                     "manual_clean_time is 0: manualTimes=%r (detail keys: %s)",
@@ -105,7 +108,9 @@ class LitterDevice(LogsMixin, Device):
     def deodorant_countdown(self) -> int:
         """Return the deodorant countdown."""
         try:
-            return int(self.detail.get("deodorantCountdown", 0))
+            raw = self.detail.get("deodorantCountdown")
+            # Same here: the key is present but null, so the default is skipped.
+            return int(raw) if raw is not None else 0
         except Exception as exc:
             _LOGGER.error("Get deodorant countdown failed: %s", exc)
             return 0
@@ -144,8 +149,7 @@ class LitterDevice(LogsMixin, Device):
             "alarm_status": self.detail.get("alarmStatus"),
             "weight": self.detail.get("weight"),
             "litter_weight_kg": self.detail.get("catLitterWeight"),
-            "total_clean_times": int(self.detail.get("inductionTimes", 0))
-            + int(self.detail.get("manualTimes", 0)),
+            "total_clean_times": self.total_clean_time,
             "manual_clean_times": self.detail.get("manualTimes"),
             "key_lock": self.detail.get("keyLock"),
             "safe_time": self.detail.get("safeTime"),

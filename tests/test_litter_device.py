@@ -99,6 +99,27 @@ class TestLitterDeviceCleanTimes:
         device.detail = {"deodorantCountdown": 30}
         assert device.deodorant_countdown == 30
 
+    def test_clean_times_null_fields(self, mock_coordinator, sample_device_data) -> None:
+        """API sends inductionTimes/manualTimes present-but-null (issue #63 family)."""
+        device = LitterBox(sample_device_data, mock_coordinator)
+        device.detail = {"inductionTimes": None, "manualTimes": None}
+        assert device.total_clean_time == 0
+        assert device.manual_clean_time == 0
+        assert device._base_state_attrs()["total_clean_times"] == 0
+
+    def test_deodorant_countdown_null(self, mock_coordinator, sample_device_data) -> None:
+        """deodorantCountdown present-but-null must return 0, not raise (issue #63)."""
+        device = LitterBox(sample_device_data, mock_coordinator)
+        device.detail = {"deodorantCountdown": None}
+        assert device.deodorant_countdown == 0
+
+    def test_litter_weight_null(self, mock_coordinator, sample_device_data) -> None:
+        """catLitterWeight present-but-null must fall back to empty-box weight."""
+        device = LitterBox(sample_device_data, mock_coordinator)
+        device.detail = {"catLitterWeight": None}
+        # must not raise unsupported operand NoneType - float
+        assert device.litter_weight == 0.0
+
 
 class TestLitterDeviceOccupied:
     """Tests for LitterDevice occupied property."""
