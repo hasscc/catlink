@@ -6,13 +6,14 @@ import datetime
 import hashlib
 import time
 
-from aiohttp import ClientConnectorError
+from aiohttp import ClientConnectorError, ClientError
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import padding
 
 from homeassistant.const import CONF_DEVICES, CONF_PASSWORD, CONF_TOKEN
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import aiohttp_client
 from homeassistant.helpers.storage import Store
 
@@ -93,6 +94,7 @@ class Account:
 
     async def request(self, api, pms=None, method="GET", **kwargs) -> dict:
         """Request the api."""
+        retried = kwargs.pop("_retried", False)
         method = method.upper()
         url = self.api_url(api)
         kws = {
@@ -122,10 +124,13 @@ class Account:
         try:
             req = await self.http.request(method, url, **kws)
             result = await req.json() or {}
+            if not isinstance(result, dict):
+                _LOGGER.warning("Invalid API response for %s", api)
+                return {}
             _LOGGER.debug("API response %s %s: %s", method, api, result)
             
             # Handle token expiration (1002: Illegal token)
-            if result.get("returnCode") == 1002 and not kwargs.get("_retried"):
+            if result.get("returnCode") == 1002 and not retried:
                 _LOGGER.info("Token expired (1002), attempting re-login for %s", self.phone)
                 if await self.async_login():
                     kwargs["_retried"] = True
@@ -193,16 +198,73 @@ class Account:
         if not self.token:
             if not await self.async_login():
                 return []
-        api = "token/device/union/list/sorted"
-        rsp = await self.request(api, {"type": "NONE"})
-        eno = rsp.get("returnCode", 0)
-        if eno == 1002:  # Illegal token
-            if await self.async_login():
-                rsp = await self.request(api, {"type": "NONE"})
-        dls = rsp.get("data", {}).get(CONF_DEVICES) or []
-        if not dls:
-            _LOGGER.warning("Got devices for %s failed: %s", self.phone, rsp)
-        return dls
+
+        refreshed = False
+        empty_response = False
+        for api in (
+            "token/device/union/sortedListV2",
+            "token/device/union/list/sorted",
+            "token/device/list",
+        ):
+            # Keep one authentication retry across all discovery endpoints.
+            try:
+                rsp = await self.request(api, {"type": "NONE"}, _retried=True)
+            except (ClientError, ValueError):
+                continue
+            if isinstance(rsp, dict) and rsp.get("returnCode") == 1002:
+                if refreshed or not await self.async_login():
+                    raise HomeAssistantError(
+                        "CATLINK device discovery authentication failed"
+                    )
+                refreshed = True
+                try:
+                    rsp = await self.request(api, {"type": "NONE"}, _retried=True)
+                except (ClientError, ValueError):
+                    continue
+                if isinstance(rsp, dict) and rsp.get("returnCode") == 1002:
+                    raise HomeAssistantError(
+                        "CATLINK device discovery authentication failed"
+                    )
+
+            if not isinstance(rsp, dict) or rsp.get("returnCode") != 0:
+                continue
+            devices = self._devices_from_data(rsp.get("data"))
+            if devices is None:
+                continue
+            if devices:
+                return devices
+            empty_response = True
+
+        if empty_response:
+            return []
+        raise HomeAssistantError("Unable to retrieve CATLINK devices")
+
+    @staticmethod
+    def _devices_from_data(data) -> list | None:
+        """Read current and legacy lists, preserving unknown device types."""
+        if isinstance(data, dict):
+            data = data.get(CONF_DEVICES)
+            if isinstance(data, dict):
+                data = data.get("records")
+        if not isinstance(data, list):
+            return None
+
+        devices = []
+        for item in data:
+            if not isinstance(item, dict):
+                continue
+            device = dict(item)
+            online = device.get("onlineStatus")
+            if isinstance(online, bool):
+                device["online"] = online
+            elif online in ("ONLINE", "OFFLINE"):
+                device["online"] = online == "ONLINE"
+            elif device.get("online") in ("ONLINE", "OFFLINE"):
+                device["online"] = device["online"] == "ONLINE"
+            devices.append(device)
+        if data and not devices:
+            return None
+        return devices
 
     async def get_cats(self, timezone_id: str | None = None) -> list:
         """Get the cats of the account."""

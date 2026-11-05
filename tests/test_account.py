@@ -1,11 +1,13 @@
 """Tests for CatLink Account module."""
 
 from datetime import timedelta
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, call, patch
 
 import pytest
+from aiohttp import ContentTypeError
 
 from homeassistant.const import CONF_DEVICES, CONF_PASSWORD, CONF_TOKEN
+from homeassistant.exceptions import HomeAssistantError
 
 from custom_components.catlink.const import (
     CONF_API_BASE,
@@ -306,7 +308,225 @@ class TestAccountGetDevices:
             devices = await account.get_devices()
 
             assert devices == [{"id": "dev1", "deviceName": "Litter Box"}]
-            mock_request.assert_called_once()
+            mock_request.assert_awaited_once_with(
+                "token/device/union/sortedListV2", {"type": "NONE"}, _retried=True
+            )
+
+    @pytest.mark.parametrize("wrapper", ["direct", "devices", "records"])
+    async def test_list_formats_preserve_all_device_types(
+        self, account, wrapper
+    ) -> None:
+        """A complete V2 list takes precedence over partial legacy lists."""
+        expected = [
+            {"id": "scooper", "deviceType": "SCOOPER"},
+            {"id": "feeder", "deviceType": "FEEDER_PRO"},
+            {"id": "future", "deviceType": "FUTURE_DEVICE"},
+        ]
+        data = expected
+        if wrapper == "devices":
+            data = {"devices": expected}
+        elif wrapper == "records":
+            data = {"devices": {"records": expected}}
+        with patch.object(account, "request", new_callable=AsyncMock) as request:
+            request.return_value = {"returnCode": 0, "data": data}
+            assert await account.get_devices() == expected
+            request.assert_awaited_once()
+
+    @pytest.mark.parametrize(
+        "v2_response",
+        [
+            {"returnCode": 0, "data": []},
+            {"returnCode": 404, "data": []},
+            {"returnCode": 0, "data": None},
+            {"returnCode": 0, "data": {"devices": "invalid"}},
+            {},
+        ],
+    )
+    async def test_legacy_fallback(self, account, v2_response) -> None:
+        """Old accounts still discover devices when V2 is empty or unavailable."""
+        old_devices = [{"id": "old-feeder", "deviceType": "FEEDER", "online": True}]
+        with patch.object(account, "request", new_callable=AsyncMock) as request:
+            request.side_effect = [
+                v2_response,
+                {"returnCode": 0, "data": {"devices": old_devices}},
+            ]
+            assert await account.get_devices() == old_devices
+            assert request.await_args_list == [
+                call(
+                    "token/device/union/sortedListV2", {"type": "NONE"}, _retried=True
+                ),
+                call("token/device/union/list/sorted", {"type": "NONE"}, _retried=True),
+            ]
+
+    async def test_final_legacy_endpoint(self, account) -> None:
+        """The device/list endpoint remains available as a last fallback."""
+        expected = [{"id": "old-scooper", "deviceType": "SCOOPER"}]
+        with patch.object(account, "request", new_callable=AsyncMock) as request:
+            request.side_effect = [
+                {"returnCode": 0, "data": []},
+                {"returnCode": 0, "data": {"devices": []}},
+                {"returnCode": 0, "data": {"devices": {"records": expected}}},
+            ]
+            assert await account.get_devices() == expected
+            assert request.await_args_list[-1] == call(
+                "token/device/list", {"type": "NONE"}, _retried=True
+            )
+
+    @pytest.mark.parametrize(
+        "error",
+        [
+            ContentTypeError(MagicMock(), (), message="Expected JSON"),
+            ValueError("Invalid JSON"),
+        ],
+    )
+    async def test_non_json_v2_response_falls_back(self, account, error) -> None:
+        """Servers without V2 may return HTML or invalid JSON for that path."""
+        unsupported = MagicMock()
+        unsupported.json = AsyncMock(side_effect=error)
+        legacy = MagicMock()
+        expected = [{"id": "old-feeder", "deviceType": "FEEDER"}]
+        legacy.json = AsyncMock(
+            return_value={"returnCode": 0, "data": {"devices": expected}}
+        )
+        account.http.request = AsyncMock(side_effect=[unsupported, legacy])
+        assert await account.get_devices() == expected
+        assert account.http.request.await_count == 2
+
+    async def test_non_json_auth_retry_falls_back(self, account) -> None:
+        """A failed response after token renewal still allows the legacy path."""
+        expected = [{"id": "old-scooper", "deviceType": "SCOOPER"}]
+        with (
+            patch.object(account, "request", new_callable=AsyncMock) as request,
+            patch.object(account, "async_login", new_callable=AsyncMock) as login,
+        ):
+            request.side_effect = [
+                {"returnCode": 1002},
+                ValueError("Invalid JSON"),
+                {"returnCode": 0, "data": {"devices": expected}},
+            ]
+            login.return_value = True
+            assert await account.get_devices() == expected
+            login.assert_awaited_once()
+
+    async def test_all_non_json_responses_fail_discovery(self, account) -> None:
+        """Broken responses never become a successful empty device list."""
+        response = MagicMock()
+        response.json = AsyncMock(side_effect=ValueError("Invalid JSON"))
+        account.http.request = AsyncMock(return_value=response)
+        with pytest.raises(HomeAssistantError, match="Unable to retrieve"):
+            await account.get_devices()
+        assert account.http.request.await_count == 3
+
+    @pytest.mark.parametrize("online", [True, False])
+    async def test_boolean_online_status(self, account, online) -> None:
+        """V2 booleans override a conflicting legacy flag without changing input."""
+        item = {"id": "feeder", "onlineStatus": online, "online": not online}
+        with patch.object(account, "request", new_callable=AsyncMock) as request:
+            request.return_value = {"returnCode": 0, "data": [item]}
+            devices = await account.get_devices()
+        assert devices[0]["online"] is online
+        assert devices[0]["onlineStatus"] is online
+        assert item["online"] is not online
+
+    @pytest.mark.parametrize(
+        ("fields", "expected"),
+        [
+            ({"onlineStatus": "ONLINE"}, True),
+            ({"onlineStatus": "OFFLINE"}, False),
+            ({"onlineStatus": None, "online": False}, False),
+            ({"online": True}, True),
+            ({"online": "ONLINE"}, True),
+            ({"online": "OFFLINE"}, False),
+        ],
+    )
+    async def test_legacy_online_status(self, account, fields, expected) -> None:
+        """Legacy availability values survive device discovery."""
+        with patch.object(account, "request", new_callable=AsyncMock) as request:
+            request.return_value = {"returnCode": 0, "data": [{"id": "old", **fields}]}
+            devices = await account.get_devices()
+        assert devices[0]["online"] is expected
+
+    async def test_invalid_list_entries_are_skipped(self, account) -> None:
+        """Null entries cannot prevent the remaining devices being discovered."""
+        expected = {"id": "scooper", "deviceType": "SCOOPER"}
+        with patch.object(account, "request", new_callable=AsyncMock) as request:
+            request.return_value = {
+                "returnCode": 0, "data": [None, "invalid", expected]
+            }
+            assert await account.get_devices() == [expected]
+
+    async def test_all_empty_lists(self, account) -> None:
+        """An account with no devices returns an empty list."""
+        with patch.object(account, "request", new_callable=AsyncMock) as request:
+            request.return_value = {"returnCode": 0, "data": []}
+            assert await account.get_devices() == []
+            assert request.await_count == 3
+
+    @pytest.mark.parametrize(
+        "response",
+        [
+            {},
+            None,
+            [],
+            {"returnCode": 503, "data": []},
+            {"returnCode": 0, "data": None},
+            {"returnCode": 0, "data": [None]},
+        ],
+    )
+    async def test_failed_discovery_is_not_empty_success(
+        self, account, response
+    ) -> None:
+        """Protocol and API failures must not look like an account without devices."""
+        with patch.object(account, "request", new_callable=AsyncMock) as request:
+            request.return_value = response
+            with pytest.raises(HomeAssistantError, match="Unable to retrieve"):
+                await account.get_devices()
+
+    async def test_token_expiry_retries_same_endpoint_once(self, account) -> None:
+        """An expired token gets one retry before discovery continues."""
+        expected = [{"id": "scooper"}]
+        with (
+            patch.object(account, "request", new_callable=AsyncMock) as request,
+            patch.object(account, "async_login", new_callable=AsyncMock) as login,
+        ):
+            request.side_effect = [
+                {"returnCode": 1002},
+                {"returnCode": 0, "data": expected},
+            ]
+            login.return_value = True
+            assert await account.get_devices() == expected
+            login.assert_awaited_once()
+            assert request.await_args_list[0] == request.await_args_list[1]
+
+    @pytest.mark.parametrize("login_success", [True, False])
+    async def test_persistent_token_expiry_stops(self, account, login_success) -> None:
+        """Do not retry authentication indefinitely or query every endpoint."""
+        with (
+            patch.object(account, "request", new_callable=AsyncMock) as request,
+            patch.object(account, "async_login", new_callable=AsyncMock) as login,
+        ):
+            request.return_value = {"returnCode": 1002}
+            login.return_value = login_success
+            with pytest.raises(HomeAssistantError, match="authentication failed"):
+                await account.get_devices()
+            login.assert_awaited_once()
+            assert request.await_count == (2 if login_success else 1)
+
+    async def test_token_refresh_is_shared_by_fallbacks(self, account) -> None:
+        """A second endpoint cannot cause a second authentication refresh."""
+        with (
+            patch.object(account, "request", new_callable=AsyncMock) as request,
+            patch.object(account, "async_login", new_callable=AsyncMock) as login,
+        ):
+            request.side_effect = [
+                {"returnCode": 1002},
+                {"returnCode": 0, "data": []},
+                {"returnCode": 1002},
+            ]
+            login.return_value = True
+            with pytest.raises(HomeAssistantError, match="authentication failed"):
+                await account.get_devices()
+            login.assert_awaited_once()
 
     @pytest.mark.usefixtures("enable_custom_integrations")
     async def test_get_devices_login_when_no_token(
@@ -452,6 +672,36 @@ class TestAccountAsyncCheckAuth:
 
 class TestAccountRequestErrors:
     """Tests for Account request error handling."""
+
+    async def test_auth_retry_flag_is_not_sent_to_http(self, account) -> None:
+        """Discovery owns its retry budget; the internal flag is not an HTTP option."""
+        response = MagicMock()
+        response.json = AsyncMock(return_value={"returnCode": 1002})
+        account.http.request = AsyncMock(return_value=response)
+        with patch.object(account, "async_login", new_callable=AsyncMock) as login:
+            result = await account.request("token/device/union/sortedListV2", _retried=True)
+            assert result == {"returnCode": 1002}
+            login.assert_not_awaited()
+        assert "_retried" not in account.http.request.call_args.kwargs
+
+    async def test_auth_retry_flag_is_consumed_on_retry(self, account) -> None:
+        """The existing request-level retry also leaves aiohttp options intact."""
+        expired = MagicMock()
+        expired.json = AsyncMock(return_value={"returnCode": 1002})
+        success = MagicMock()
+        success.json = AsyncMock(return_value={"returnCode": 0, "data": []})
+        account.http.request = AsyncMock(side_effect=[expired, success])
+        with patch.object(account, "async_login", new_callable=AsyncMock) as login:
+            login.return_value = True
+            assert await account.request("token/device/list") == {
+                "returnCode": 0, "data": []
+            }
+            login.assert_awaited_once()
+        assert account.http.request.await_count == 2
+        assert all(
+            "_retried" not in args.kwargs
+            for args in account.http.request.await_args_list
+        )
 
     @pytest.mark.usefixtures("enable_custom_integrations")
     async def test_request_returns_empty_on_connector_error(self, account) -> None:

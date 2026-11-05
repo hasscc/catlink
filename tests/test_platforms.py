@@ -91,7 +91,7 @@ async def test_platforms_loaded(init_integration: MockConfigEntry) -> None:
     """Test all supported platforms are loaded."""
     assert init_integration.state is ConfigEntryState.LOADED
     for domain in SUPPORTED_DOMAINS:
-        assert domain in ["sensor", "binary_sensor", "switch", "select", "button"]
+        assert domain in ["sensor", "binary_sensor", "switch", "select", "button", "number"]
 
 
 @pytest.mark.usefixtures("enable_custom_integrations")

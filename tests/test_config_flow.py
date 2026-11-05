@@ -9,6 +9,7 @@ from custom_components.catlink.const import (
     CONF_PHONE_IAC,
     CONF_UPDATE_INTERVAL,
     DOMAIN,
+    ERROR_CANNOT_CONNECT,
     ERROR_INVALID_AUTH,
 )
 import pytest
@@ -17,6 +18,7 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 from homeassistant import data_entry_flow
 from homeassistant.config_entries import SOURCE_REAUTH, SOURCE_USER
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import HomeAssistantError
 
 
 class TestDeviceLabel:
@@ -152,6 +154,33 @@ async def test_user_step_invalid_auth(
 
         assert result["type"] == data_entry_flow.FlowResultType.FORM
         assert result["errors"]["base"] == ERROR_INVALID_AUTH
+
+
+async def test_user_discovery_failure_can_be_retried(
+    hass: HomeAssistant, enable_custom_integrations, mock_account
+) -> None:
+    """A discovery outage keeps the account form open instead of saving no devices."""
+    mock_account.return_value.get_devices.side_effect = [
+        HomeAssistantError("Device discovery failed"),
+        [{"id": "dev1", "deviceType": "SCOOPER"}],
+    ]
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": SOURCE_USER}
+    )
+    credentials = {"phone": "+8613812345678", "password": "testpass"}
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], credentials
+    )
+    assert result["type"] == data_entry_flow.FlowResultType.FORM
+    assert result["step_id"] == "user"
+    assert result["errors"] == {"base": ERROR_CANNOT_CONNECT}
+    assert not hass.config_entries.async_entries(DOMAIN)
+
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], credentials
+    )
+    assert result["type"] == data_entry_flow.FlowResultType.FORM
+    assert result["step_id"] == "discovery"
 
 
 async def test_discovery_step_form(
@@ -340,3 +369,42 @@ async def test_options_flow(
     assert result["type"] == data_entry_flow.FlowResultType.CREATE_ENTRY
     assert result["data"][CONF_DEVICE_IDS] == ["dev1", "dev2"]
     assert result["data"][CONF_UPDATE_INTERVAL] == 300
+
+
+@pytest.mark.parametrize("recover", [True, False])
+async def test_options_discovery_failure_preserves_selection(
+    hass: HomeAssistant, enable_custom_integrations, mock_account, recover
+) -> None:
+    """Retrying an outage must not replace the existing selection with an empty one."""
+    options = {CONF_DEVICE_IDS: ["dev1"], CONF_UPDATE_INTERVAL: 120}
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={CONF_PHONE_IAC: "86", CONF_PHONE: "13812345678"},
+        options=options,
+    )
+    entry.add_to_hass(hass)
+    mock_account.return_value.get_devices.side_effect = [
+        HomeAssistantError("Device discovery failed"),
+        [{"id": "dev1", "deviceType": "SCOOPER"}]
+        if recover else HomeAssistantError("Device discovery failed"),
+    ]
+
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    assert result["type"] == data_entry_flow.FlowResultType.FORM
+    assert result["errors"] == {"base": ERROR_CANNOT_CONNECT}
+    assert dict(entry.options) == options
+
+    result = await hass.config_entries.options.async_configure(result["flow_id"], {})
+    assert result["type"] == data_entry_flow.FlowResultType.FORM
+    assert dict(entry.options) == options
+    if not recover:
+        assert result["errors"] == {"base": ERROR_CANNOT_CONNECT}
+        return
+
+    assert not result.get("errors")
+    assert result["data_schema"]({})[CONF_DEVICE_IDS] == ["dev1"]
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], options
+    )
+    assert result["type"] == data_entry_flow.FlowResultType.CREATE_ENTRY
+    assert result["data"] == options

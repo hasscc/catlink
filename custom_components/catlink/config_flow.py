@@ -16,6 +16,7 @@ from homeassistant.config_entries import (
 )
 from homeassistant.const import CONF_PASSWORD
 from homeassistant.core import callback
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.selector import (
     NumberSelector,
@@ -31,6 +32,7 @@ from .const import (
     CONF_PHONE_IAC,
     CONF_UPDATE_INTERVAL,
     DOMAIN,
+    ERROR_CANNOT_CONNECT,
     ERROR_INVALID_AUTH,
     SUPPORTED_DEVICE_TYPES,
 )
@@ -110,27 +112,31 @@ class CatlinkConfigFlow(ConfigFlow, domain=DOMAIN):
                         self._get_reauth_entry(), data=self._config
                     )
 
-                devices = await account.get_devices()
-                if not devices:
-                    return self.async_create_entry(
-                        title=f"+{phone_iac}{phone_number}",
-                        data=self._config,
-                        options={CONF_DEVICE_IDS: [], CONF_UPDATE_INTERVAL: 60},
-                    )
+                try:
+                    devices = await account.get_devices()
+                except HomeAssistantError:
+                    errors["base"] = ERROR_CANNOT_CONNECT
+                else:
+                    if not devices:
+                        return self.async_create_entry(
+                            title=f"+{phone_iac}{phone_number}",
+                            data=self._config,
+                            options={CONF_DEVICE_IDS: [], CONF_UPDATE_INTERVAL: 60},
+                        )
 
-                self._discovered_devices = devices
-                self._device_options = {}
-                self._supported_ids = []
-                for dat in devices:
-                    did = dat.get("id")
-                    if not did:
-                        continue
-                    supported = dat.get("deviceType", "") in SUPPORTED_DEVICE_TYPES
-                    self._device_options[did] = _device_label(dat, supported)
-                    if supported:
-                        self._supported_ids.append(did)
+                    self._discovered_devices = devices
+                    self._device_options = {}
+                    self._supported_ids = []
+                    for dat in devices:
+                        did = dat.get("id")
+                        if not did:
+                            continue
+                        supported = dat.get("deviceType", "") in SUPPORTED_DEVICE_TYPES
+                        self._device_options[did] = _device_label(dat, supported)
+                        if supported:
+                            self._supported_ids.append(did)
 
-                return await self.async_step_discovery()
+                    return await self.async_step_discovery()
 
         reauth_entry = (
             self._get_reauth_entry() if self.source == SOURCE_REAUTH else None
@@ -209,11 +215,16 @@ class CatlinkConfigFlow(ConfigFlow, domain=DOMAIN):
 class CatlinkOptionsFlowHandler(OptionsFlowWithReload):
     """Handle CatLink options flow."""
 
+    def __init__(self) -> None:
+        """Initialize the options flow."""
+        super().__init__()
+        self._discovery_failed = False
+
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
         """Manage device selection and refresh interval."""
-        if user_input is not None:
+        if user_input is not None and not self._discovery_failed:
             return self.async_create_entry(data=user_input)
 
         account = Account(
@@ -221,7 +232,16 @@ class CatlinkOptionsFlowHandler(OptionsFlowWithReload):
             {**dict(self.config_entry.data), **dict(self.config_entry.options or {})},
         )
         await account.async_check_auth()
-        devices = await account.get_devices() or []
+        try:
+            devices = await account.get_devices() or []
+        except HomeAssistantError:
+            self._discovery_failed = True
+            return self.async_show_form(
+                step_id="init",
+                data_schema=vol.Schema({}),
+                errors={"base": ERROR_CANNOT_CONNECT},
+            )
+        self._discovery_failed = False
 
         device_options: dict[str, str] = {}
         supported_ids: list[str] = []
