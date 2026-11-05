@@ -147,6 +147,10 @@ wget -O - https://get.hacs.vip | DOMAIN=catlink REPO_PATH=hasscc/catlink ARCHIVE
 
 #### Additional supported devices
 
+Feeder Pro (`FEEDER_PRO`) has read-only support for dispensing status, food tray
+weight, connectivity, errors and recent feeding records. Feeding buttons, portion
+controls and mode changes are not exposed for this model.
+
 <div style="display: flex; justify-content: space-between; flex-wrap: nowrap; gap: 16px;">
 
   <div style="text-align: center; width: 33.33%;">

@@ -6,6 +6,7 @@ from .base import Device
 from .cat import CatDevice
 from .c08 import C08Device
 from .feeder import FeederDevice
+from .feeder_pro import FeederProDevice
 from .litterbox import LitterBox
 from .scooper import ScooperDevice
 from .scooper_pro_ultra import ScooperProUltraDevice
@@ -22,6 +23,7 @@ DEVICE_TYPES: dict[str, type[Device]] = {
     "LITTER_BOX_599": LitterBox,  # SCOOPER C1
     "VISUAL_PRO_ULTRA": ScooperProUltraDevice,
     "FEEDER": FeederDevice,
+    "FEEDER_PRO": FeederProDevice,
     "PUREPRO": PureProDevice,
 }
 

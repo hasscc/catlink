@@ -222,6 +222,36 @@ async def test_discovery_step_create_entry(
     assert result["options"][CONF_UPDATE_INTERVAL] == 120
 
 
+async def test_feeder_pro_is_supported_in_discovery(
+    hass: HomeAssistant, enable_custom_integrations, mock_account
+) -> None:
+    """Select Feeder Pro by default and label it as supported."""
+    mock_account.return_value.get_devices = AsyncMock(
+        return_value=[
+            {
+                "id": "feeder-pro-test",
+                "deviceName": "Kitchen",
+                "model": "Feeder Pro",
+                "deviceType": "FEEDER_PRO",
+            }
+        ]
+    )
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": SOURCE_USER}
+    )
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        {"phone": "+8613812345678", "password": "testpass"},
+    )
+    assert result["step_id"] == "discovery"
+    assert result["description_placeholders"]["supported_count"] == "1"
+    assert result["description_placeholders"]["unsupported_count"] == "0"
+    schema = result["data_schema"]
+    assert schema({})[CONF_DEVICE_IDS] == ["feeder-pro-test"]
+    selector = schema.schema[next(key for key in schema.schema if key == CONF_DEVICE_IDS)]
+    assert selector.options["feeder-pro-test"] == "Kitchen (Feeder Pro) - Supported"
+
+
 async def test_reauth_flow(
     hass: HomeAssistant, enable_custom_integrations, mock_account
 ) -> None:
