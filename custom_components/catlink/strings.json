@@ -28,6 +28,9 @@
     }
   },
   "options": {
+    "error": {
+      "cannot_connect": "Cannot connect to CatLink servers. Please check your internet connection and try again."
+    },
     "step": {
       "init": {
         "description": "Add or remove devices and configure the refresh interval. Changes take effect after reload.",
