@@ -27,8 +27,10 @@ CONF_UPDATE_INTERVAL = "update_interval"
 
 DEFAULT_API_BASE = "https://app.catlinks.cn/api/"
 
-# Device types with full support (sensors, switches, selects, etc.)
-SUPPORTED_DEVICE_TYPES = frozenset({"C08", "SCOOPER", "LITTER_BOX_599", "FEEDER", "PUREPRO"})
+# Device types with dedicated entities, including read-only devices.
+SUPPORTED_DEVICE_TYPES = frozenset(
+    {"C08", "SCOOPER", "LITTER_BOX_599", "FEEDER", "FEEDER_PRO", "PUREPRO"}
+)
 
 # API server regions: value is the API base URL
 API_SERVERS: dict[str, str] = {
