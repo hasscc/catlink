@@ -87,7 +87,10 @@ class CatlinkConfigFlow(ConfigFlow, domain=DOMAIN):
             phone_raw = user_input[CONF_PHONE].strip()
             password = user_input[CONF_PASSWORD]
 
-            phone_iac, phone_number = parse_phone_number(phone_raw)
+            if "@" in phone_raw:
+                phone_iac, phone_number = "", phone_raw
+            else:
+                phone_iac, phone_number = parse_phone_number(phone_raw)
             region = await discover_region(self.hass, phone_iac, phone_number, password)
             if region is None:
                 errors["base"] = ERROR_INVALID_AUTH
