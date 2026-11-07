@@ -140,16 +140,20 @@ class Account:
         """Login the account."""
         pms = {
             "platform": "ANDROID",
-            "internationalCode": self._config.get(CONF_PHONE_IAC),
-            "mobile": str(self.phone),
             "password": self.password,
         }
+        if "@" in str(self.phone):
+            pms["email"] = str(self.phone)
+        else:
+            pms["internationalCode"] = self._config.get(CONF_PHONE_IAC)
+            pms["mobile"] = str(self.phone)
         self._config.update(
             {
                 CONF_TOKEN: None,
             }
         )
-        rsp = await self.request("login/password", pms, "POST")
+        endpoint = "login/email" if "@" in str(self.phone) else "login/password"
+        rsp = await self.request(endpoint, pms, "POST")
         tok = rsp.get("data", {}).get("token")
         if not tok:
             _LOGGER.error("Login %s failed: %s", self.phone, [rsp, pms])
