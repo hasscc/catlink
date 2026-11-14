@@ -230,6 +230,59 @@ class TestAccountRequest:
     """Tests for Account request method."""
 
     @pytest.mark.usefixtures("enable_custom_integrations")
+    async def test_expired_token_relogs_in_and_retries_once(self, account) -> None:
+        """A 1002 re-logs in and retries once, freshly signed with the new token."""
+        calls = []
+
+        async def mock_request(method, url, **kwargs):
+            calls.append(kwargs)
+            resp = MagicMock()
+            code = 1002 if len(calls) == 1 else 0
+            resp.json = AsyncMock(return_value={"returnCode": code})
+            return resp
+
+        async def mock_login():
+            account._config[CONF_TOKEN] = "new-token"
+            return True
+
+        account.http.request = mock_request
+        account.async_login = AsyncMock(side_effect=mock_login)
+
+        result = await account.request("token/device/list", {"type": "NONE"})
+
+        assert result == {"returnCode": 0}
+        assert len(calls) == 2
+        account.async_login.assert_awaited_once()
+        retry = calls[1]
+        assert "_retried" not in retry
+        params = dict(retry["params"])
+        sign = params.pop("sign")
+        assert params[CONF_TOKEN] == "new-token"
+        assert params["type"] == "NONE"
+        assert sign == Account.params_sign(params)
+        assert retry["headers"]["token"] == "new-token"
+
+    @pytest.mark.usefixtures("enable_custom_integrations")
+    async def test_expired_token_retried_only_once(self, account) -> None:
+        """If the retry is rejected too, its response is returned without looping."""
+        calls = []
+
+        async def mock_request(method, url, **kwargs):
+            calls.append(kwargs)
+            resp = MagicMock()
+            resp.json = AsyncMock(return_value={"returnCode": 1002})
+            return resp
+
+        account.http.request = mock_request
+        account.async_login = AsyncMock(return_value=True)
+
+        result = await account.request("token/device/list")
+
+        assert result == {"returnCode": 1002}
+        assert len(calls) == 2
+        account.async_login.assert_awaited_once()
+
+    @pytest.mark.usefixtures("enable_custom_integrations")
     async def test_request_get_returns_json(self, account) -> None:
         """Test request GET returns parsed JSON."""
         request_kwargs = {}

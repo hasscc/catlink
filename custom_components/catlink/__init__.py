@@ -3,6 +3,7 @@
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_DEVICES
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers import config_validation as cv
 
 from .const import (
@@ -42,6 +43,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     await acc.async_check_auth()
     await coordinator.async_refresh()
+    if not coordinator.last_update_success:
+        # Entities are created by the first successful update; without one
+        # nothing would ever poll again. Let HA retry the setup later.
+        acc.close()
+        raise ConfigEntryNotReady("Could not fetch CatLink devices")
 
     hass.data[DOMAIN][CONF_ACCOUNTS][acc.uid] = acc
     hass.data[DOMAIN]["coordinators"][coordinator.name] = coordinator

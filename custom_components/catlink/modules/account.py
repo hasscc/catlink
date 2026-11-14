@@ -101,6 +101,10 @@ class Account:
 
     async def request(self, api, pms=None, method="GET", **kwargs) -> dict:
         """Request the api."""
+        retried = kwargs.pop("_retried", False)
+        # Kept unsigned for the retry after a re-login; pms gets the token,
+        # nonce and signature added below.
+        original = (api, dict(pms or {}), method)
         method = method.upper()
         url = self.api_url(api)
         kws = {
@@ -133,11 +137,10 @@ class Account:
             _LOGGER.debug("API response %s %s: %s", method, api, result)
             
             # Handle token expiration (1002: Illegal token)
-            if result.get("returnCode") == 1002 and not kwargs.get("_retried"):
+            if result.get("returnCode") == 1002 and not retried:
                 _LOGGER.info("Token expired (1002), attempting re-login for %s", self.phone)
                 if await self.async_login():
-                    kwargs["_retried"] = True
-                    return await self.request(api, pms, method, **kwargs)
+                    return await self.request(*original, _retried=True, **kwargs)
             
             return result
         except (ClientConnectorError, TimeoutError) as exc:  # noqa: UP041
