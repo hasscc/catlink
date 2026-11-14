@@ -18,7 +18,10 @@ class CatlinkBinaryEntity(CatlinkEntity):
     def update(self) -> None:
         """Update the entity."""
         super().update()
-        if hasattr(self._device, self._name):
+        fun = self._option.get("is_on")
+        if callable(fun):
+            self._attr_is_on = bool(fun())
+        elif hasattr(self._device, self._name):
             self._attr_is_on = bool(getattr(self._device, self._name))
         else:
             self._attr_is_on = False

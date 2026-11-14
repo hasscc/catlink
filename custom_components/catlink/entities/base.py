@@ -33,6 +33,7 @@ class CatlinkEntity(CoordinatorEntity):
         self._attr_device_class = self._option.get("class")
         self._attr_native_unit_of_measurement = self._option.get("unit")
         self._attr_state_class = self._option.get("state_class")
+        self._attr_entity_category = self._option.get("entity_category")
         entity_picture = self._option.get("entity_picture")
         if callable(entity_picture):
             self._attr_entity_picture = entity_picture()
@@ -51,6 +52,14 @@ class CatlinkEntity(CoordinatorEntity):
         await super().async_added_to_hass()
         self._device.listeners[self.entity_id] = self._handle_coordinator_update
         self._handle_coordinator_update()
+
+    @property
+    def available(self) -> bool:
+        """Return False when the entity's "available" option says so."""
+        fun = self._option.get("available")
+        if callable(fun) and not fun():
+            return False
+        return super().available
 
     def _handle_coordinator_update(self):
         self.update()

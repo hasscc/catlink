@@ -7,11 +7,13 @@ from custom_components.catlink.devices.litterbox import LitterBox
 from custom_components.catlink.entities.base import CatlinkEntity
 from custom_components.catlink.entities.binary import CatlinkBinarySensorEntity
 from custom_components.catlink.entities.button import CatlinkButtonEntity
+from custom_components.catlink.entities.number import CatlinkNumberEntity
 from custom_components.catlink.entities.select import CatlinkSelectEntity
 from custom_components.catlink.entities.sensor import CatlinkSensorEntity
 from custom_components.catlink.entities.switch import CatlinkSwitchEntity
 import pytest
 
+from homeassistant.components.number import NumberMode
 from homeassistant.const import STATE_OFF, STATE_ON
 
 
@@ -55,6 +57,26 @@ def real_device(mock_coordinator):
 
 class TestCatlinkEntity:
     """Tests for CatlinkEntity base class."""
+
+    @pytest.mark.parametrize(
+        ("option", "coordinator_ok", "expected"),
+        [
+            ({}, True, True),
+            ({}, False, False),
+            ({"available": lambda: True}, True, True),
+            ({"available": lambda: False}, True, False),
+            ({"available": lambda: True}, False, False),
+        ],
+    )
+    def test_available_option(
+        self, mock_device, mock_coordinator, option, coordinator_ok, expected
+    ) -> None:
+        """The "available" option can only make an entity unavailable."""
+        mock_device.coordinator = mock_coordinator
+        mock_coordinator.last_update_success = coordinator_ok
+        entity = CatlinkEntity("error", mock_device, option)
+
+        assert entity.available is expected
 
     def test_entity_initialization(
         self, hass, mock_device, mock_coordinator
@@ -176,6 +198,21 @@ class TestCatlinkBinarySensorEntity:
         entity.update()
         assert entity._attr_is_on is True
         assert entity.state == STATE_ON
+
+    def test_binary_sensor_is_on_option_wins(
+        self, hass, mock_device, mock_coordinator
+    ) -> None:
+        """An "is_on" callable in the options takes precedence over the attribute."""
+        mock_device.coordinator = mock_coordinator
+        mock_device.occupied = True
+        entity = CatlinkBinarySensorEntity(
+            "occupied", mock_device, {"is_on": lambda: False}
+        )
+        entity.coordinator = mock_coordinator
+        entity.hass = hass
+
+        entity.update()
+        assert entity._attr_is_on is False
 
     def test_binary_sensor_update_off(
         self, hass, mock_device, mock_coordinator
@@ -401,3 +438,79 @@ class TestCatlinkSwitchEntity:
         await entity.async_turn_off()
         assert entity._attr_is_on is False
         mock_turn_off.assert_called_once()
+
+
+class TestCatlinkNumberEntity:
+    """Tests for CatlinkNumberEntity."""
+
+    def _entity(self, hass, mock_device, mock_coordinator, option):
+        mock_device.coordinator = mock_coordinator
+        entity = CatlinkNumberEntity("portions", mock_device, option)
+        entity.coordinator = mock_coordinator
+        entity.hass = hass
+        return entity
+
+    def test_number_initialization(
+        self, hass, mock_device, mock_coordinator
+    ) -> None:
+        """Range, step and mode come from the option; mode defaults to auto."""
+        entity = self._entity(
+            hass, mock_device, mock_coordinator, {"min": 1, "max": 30, "step": 1}
+        )
+        assert entity._attr_native_min_value == 1
+        assert entity._attr_native_max_value == 30
+        assert entity._attr_native_step == 1
+        assert entity._attr_mode == NumberMode.AUTO
+
+        boxed = self._entity(
+            hass, mock_device, mock_coordinator, {"mode": NumberMode.BOX}
+        )
+        assert boxed._attr_mode == NumberMode.BOX
+
+    async def test_set_value_without_option_stores_on_device(
+        self, hass, mock_device, mock_coordinator
+    ) -> None:
+        """Without "async_set_value" the value is only stored on the device (feeder portions)."""
+        mock_device.portions = 1
+        entity = self._entity(hass, mock_device, mock_coordinator, {"min": 1, "max": 10})
+
+        await entity.async_set_native_value(3.0)
+
+        assert mock_device.portions == 3
+
+    async def test_set_value_calls_option(
+        self, hass, mock_device, mock_coordinator
+    ) -> None:
+        """With "async_set_value" the value goes through it and the state refreshes."""
+        mock_device.portions = 1
+        mock_set = AsyncMock(return_value=True)
+
+        def applied(value, **kwargs):
+            mock_device.portions = int(value)
+            return True
+
+        mock_set.side_effect = applied
+        entity = self._entity(
+            hass, mock_device, mock_coordinator, {"async_set_value": mock_set}
+        )
+
+        await entity.async_set_native_value(5.0)
+
+        mock_set.assert_awaited_once_with(5.0, entity=entity)
+        assert entity._attr_state == 5
+
+    async def test_set_value_failure_keeps_state(
+        self, hass, mock_device, mock_coordinator
+    ) -> None:
+        """A failed write leaves the device value and entity state alone."""
+        mock_device.portions = 2
+        mock_set = AsyncMock(return_value=False)
+        entity = self._entity(
+            hass, mock_device, mock_coordinator, {"async_set_value": mock_set}
+        )
+        entity.update()
+
+        await entity.async_set_native_value(7.0)
+
+        assert mock_device.portions == 2
+        assert entity._attr_state == 2
