@@ -31,6 +31,7 @@ from ..const import (
     SIGN_KEY,
 )
 from ..helpers import Helper
+from .linkvisual import LinkVisualClient
 
 
 class Account:
@@ -41,14 +42,25 @@ class Account:
         self._config = config
         self.hass = hass
         self.http = aiohttp_client.async_create_clientsession(hass, auto_cleanup=False)
+        self._linkvisual: LinkVisualClient | None = None
 
     def close(self) -> None:
         """Release the HTTP session.
 
         It is created with auto_cleanup=False; HA sessions share a connector,
         so detach() is the documented way (close() is replaced by a warning).
+        Also stops the LinkVisual client's push connection (Pro Ultra only).
         """
+        if self._linkvisual is not None:
+            self._linkvisual.close()
         self.http.detach()
+
+    @property
+    def linkvisual(self) -> LinkVisualClient:
+        """Return the LinkVisual (camera streaming) client for this account."""
+        if self._linkvisual is None:
+            self._linkvisual = LinkVisualClient(self)
+        return self._linkvisual
 
     def get_config(self, key, default=None) -> str:
         """Return the config of the account."""

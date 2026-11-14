@@ -81,6 +81,15 @@ class TestAccountClose:
         mock_http_session.detach.assert_called_once_with()
         mock_http_session.close.assert_not_called()
 
+    def test_close_stops_linkvisual(self, account, mock_http_session) -> None:
+        """close() also stops a LinkVisual client's push connection, if one exists."""
+        client = account.linkvisual
+        client.close = MagicMock()
+
+        account.close()
+
+        client.close.assert_called_once_with()
+
 
 class TestAccountGetConfig:
     """Tests for Account get_config."""

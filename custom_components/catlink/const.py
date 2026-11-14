@@ -60,6 +60,11 @@ RSA_PRIVATE_KEY = (
     "I0eGQrD/W4rBeoCX8sJDCH49lMsec52TFI2Gn8tTKOCqqgGvRSKDJ005HlnmKw=="
 )
 
+# Aliyun IoT (Living Platform) app credentials used by the CatLink app for
+# LinkVisual camera streaming (VISUAL_PRO_ULTRA).
+ALIYUN_APP_KEY = "334820327"
+ALIYUN_APP_SECRET = "5ab84c6ea1d448b4af23b4bd4d25b006"
+
 SUPPORTED_DOMAINS = [
     "sensor",
     "binary_sensor",
@@ -68,6 +73,7 @@ SUPPORTED_DOMAINS = [
     "button",
     "number",
     "time",
+    "camera",
 ]
 
 ACCOUNT_SCHEMA = vol.Schema(
