@@ -31,6 +31,7 @@
   - [Scooper SE](#supported-devices-and-operations)
   - [Scooper PRO](#supported-devices-and-operations)
   - [PurePro Fountain](#supported-devices-and-operations)
+  - [Scooper Pro Ultra](#scooper-pro-ultra)
 - [How to Configure?](#how-to-configure)
 - [Services (Optional)](#services-optional)
 - [Changelog](#changelog)
@@ -180,15 +181,16 @@ wget -O - https://get.hacs.vip | DOMAIN=catlink REPO_PATH=hasscc/catlink ARCHIVE
   </div>
 
   <div style="text-align: center; width: 33.33%;">
-    <h3>Scooper Pro Ultra (limited)</h3>
+    <h3><a href="#scooper-pro-ultra">Scooper Pro Ultra</a></h3>
     <img src="https://www.catlinkus.com/cdn/shop/files/ULTRA3_832ba0c1-c1b6-4ec0-ba8a-6ec5122897dd_610x610_crop_center.webp?v=1768480746" alt="Scooper Pro Ultra" width="150">
     <h4>Operations</h4>
     <ul style="text-align: left;">
-      <li>Litter remaining days</li>
-      <li>Deodorant countdown</li>
-      <li>Total clean time</li>
-      <li>Logs</li>
-      <li>Entities: sensor</li>
+      <li>Live camera (stream and snapshot)</li>
+      <li>Live status, cat inside, last visit (cat, weight, time)</li>
+      <li>Clean, empty, level, pause, resume, cancel</li>
+      <li>Mode, settings, do not disturb, recording period</li>
+      <li>Real-time push updates and events for automations</li>
+      <li>Entities: camera, sensor, binary sensor, select, switch, number, time, button</li>
     </ul>
   </div>
 
@@ -212,6 +214,117 @@ wget -O - https://get.hacs.vip | DOMAIN=catlink REPO_PATH=hasscc/catlink ARCHIVE
 
 </div>
 
+
+### Scooper Pro Ultra
+
+The Scooper Pro Ultra (`VISUAL_PRO_ULTRA`) is an Aliyun IoT camera device. The integration talks to Aliyun as the app does: it reads and writes the box's settings, streams the camera and keeps a push connection open, so states follow the box within about a second. The CatLink cloud is still polled every minute, for history and as a fallback.
+
+The live view has sound (the box's microphone). The "Microphone" switch turns it off, for the stream and for live talk. The stream is H.265, so it needs Home Assistant's go2rtc: it works in the Home Assistant iOS app and in Safari, Firefox shows the snapshot only, and Chromium-based browsers need hardware H.265 decoding.
+
+#### Entities
+
+Names below are what Home Assistant shows after the device name (for example "Litter box Cat inside").
+
+| Entity | Type | Notes |
+|---|---|---|
+| Speaker | media player | Plays audio through the box's speaker (see below). |
+| Camera | camera | Live stream. The snapshot (dashboard picture) never wakes the camera: it is the newest of the photo the box took for its last event (visit, motion, clean) and the last frame from a live view in Home Assistant. |
+| Status | sensor | Idle, cleaning, emptying litter, leveling litter, paused, cancelling. Attributes: raw run status, job. |
+| Cat inside | binary sensor | On as soon as a cat steps onto the scale (1 kg or more), off as soon as it leaves or the visit is done; always off while a job runs. |
+| Last visit | sensor | Name of the cat that visited last ("Unrecognized cat" if CatLink couldn't tell). Attributes: weight, duration, result (pee/poop), time. |
+| Last visit weight / duration | sensor | kg and seconds of the last visit, kept as long-term statistics. |
+| Visits today / Cleans today | sensor | Counters that reset at midnight. Visits today lists each cat's visits in the `cats` attribute. |
+| Litter level | sensor | Percent of litter left. |
+| Waste bin / Waste bin installed | sensor / binary sensor | Empty, half full or full; bin in place or removed. |
+| Fault | sensor | None, anti-pinch, motor blocked, weight protection; "cat inside" while a cat is in the box. |
+| Litter days left / Deodorant days left | sensor | Replacement countdowns. |
+| Last activity | sensor | Latest entry of the CatLink activity timeline. |
+| Online | binary sensor | Aliyun connection; only goes off after the box has been away for 60 s. |
+| Wi-Fi signal, Wi-Fi RSSI, Wi-Fi band, Firmware version, Scale weight | sensor | Diagnostics. Scale weight is the raw weight on the scale. |
+| Clean, Empty litter, Level litter, Pause, Resume, Cancel | button | Same checks as the app: jobs only start when idle, never with a blocking fault, a missing or full bin. |
+| Reset litter counter / Reset deodorant counter | button | After replacing litter or the deodorant cartridge. |
+| Restart | button | Diagnostic. Restarts the box (not while a job runs). |
+| Cleaning mode | select | Automatic, manual, scheduled. Only while idle. |
+| Recording period | select | All day, off, daytime, night (20:00-08:00), custom (custom periods are set in the app). |
+| Fill light | select | Always on, when dark, while a cat visits, off. |
+| Video quality | select | 1080p or 720p; also changes the stream Home Assistant receives. |
+| Clean delay | number | 1-30 minutes after a visit; at least 10 with soft-stool mode on. |
+| Leveling level | number | 1-4 (9/11/13/15 s of leveling). |
+| Bin-full sensitivity | number | 1-4; higher allows more cleans before the bin counts as full. |
+| Do not disturb, Do not disturb start / end | switch, time | While on, the box is silent and pauses cleaning after visits and scheduled cleans. 10-minute steps, at most 8 hours. |
+| Key beep, Child lock, Continuous clean, Soft-stool mode, Voice announcements, Microphone, Video watermark, Camera sleep, Indicator light | switch | The app's settings. Continuous clean and soft-stool mode can't change while a job runs. |
+
+#### Speaker
+
+The box's talk-back channel (the app's "talk" button) is a media player, so anything Home Assistant can play — a media source item, a URL, text to speech — comes out of the litter box.
+
+```yaml
+action: tts.speak
+target:
+  entity_id: tts.google_translate_en_com
+data:
+  media_player_entity_id: media_player.visual_pro_ultra_8937_speaker
+  message: Dinner is served.
+```
+
+The box plays G.711 A-law 8 kHz mono, so it sounds like a phone call. It has one talk session at a time: playback fails while the CatLink app's talk screen is open, and starting a new playback stops the one before it (as does `media_player.media_stop`). `tts.speak` returns as soon as the box starts playing.
+
+#### Live talk
+
+The same channel can be held open and fed a microphone in real time, optionally with the box's microphone coming back, over a websocket command. There is no frontend for it here; it is the backend for a custom panel or card. See [docs/LIVE_TALK_API.md](docs/LIVE_TALK_API.md). Live talk and playback take turns: whichever starts stops the other.
+
+#### Events
+
+The box's activity is fired on the Home Assistant event bus as `catlink_event`, with `device_id`, `device_name` and `type`:
+
+| `type` | When | Extra data |
+|---|---|---|
+| `cat_entered` | A cat steps onto the scale | `weight` (kg, as it steps in) |
+| `cat_left` | The cat stepped off, or the visit is done | |
+| `visit` | The box recorded a visit | `weight` (kg), `duration` (s) |
+| `visit_recorded` | The box's own record of the visit, about 15 s later | `weight`, `duration`, `data` |
+| `cat_appeared` | A cat at the box that didn't make a visit | `judge_code` |
+| `motion` | Movement at the box | `action`: `started` for the first, `ongoing` every ~20 s after |
+| `cleaning`, `leveling` | A job started or finished | `action`: `started` / `finished` |
+| `fault` | Each fault warning, and when it clears | `action`: `reported` / `cleared`, `fault`, `code` |
+
+Example: a notification for every fault warning, and one for each visit.
+
+```yaml
+automation:
+  - alias: Litter box fault
+    triggers:
+      - trigger: event
+        event_type: catlink_event
+        event_data:
+          type: fault
+          action: reported
+    actions:
+      - action: notify.notify
+        data:
+          message: "Litter box: {{ trigger.event.data.fault | replace('_', ' ') }}"
+
+  - alias: Litter box visit
+    triggers:
+      - trigger: event
+        event_type: catlink_event
+        event_data:
+          type: visit
+    actions:
+      - action: notify.notify
+        data:
+          message: >-
+            Visit: {{ trigger.event.data.weight }} kg,
+            {{ trigger.event.data.duration }} s
+```
+
+To see the events live, open Developer tools, Events, and listen to `catlink_event`.
+
+#### Notes
+
+- CatLink allows one login per account, so using the phone app logs Home Assistant out until it logs in again by itself (a minute or two). Sharing the device with a second account avoids this.
+- Live updates need outgoing access to Aliyun's push channel (MQTT over TLS, port 1883, to `*.iot-as-mqtt.<region>.aliyuncs.com`). Without it everything still works on the one-minute polling.
+- How it all works: [docs/PRO_ULTRA.md](docs/PRO_ULTRA.md).
 
 ### How to Configure?
 
