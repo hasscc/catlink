@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased
+
+### Added
+- Time platform and a `translation_key` entity option
+- English translations are shipped, so the setup and options dialogs show their texts
+
+### Fixed
+- Entity IDs now use each entity's own platform domain, as Home Assistant requires
+- Re-login after an expired token repeats the original request instead of a signed one
+- Polling keeps working after the integration is reloaded
+- The account's HTTP session is released when a config entry or flow is done
+- A failed first refresh retries the setup instead of leaving the integration idle
+
 ## 2.1.1 - 2026-02-06
 
 ### Added
