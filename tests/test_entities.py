@@ -440,6 +440,28 @@ class TestCatlinkSwitchEntity:
         mock_turn_off.assert_called_once()
 
 
+class TestTranslationKeyOption:
+    """Tests for the opt-in "translation_key" entity option."""
+
+    def test_translated_name(self, mock_device, mock_coordinator) -> None:
+        """With a translation key HA builds the name from the device and translations."""
+        mock_device.coordinator = mock_coordinator
+        entity = CatlinkSensorEntity("litter_level", mock_device, {"translation_key": "litter_level"})
+
+        assert entity.has_entity_name is True
+        assert entity.translation_key == "litter_level"
+        assert not hasattr(entity, "_attr_name") or entity._attr_name is None
+        assert entity.entity_id.endswith("_litter_level")
+
+    def test_plain_name_without_option(self, mock_device, mock_coordinator) -> None:
+        """Without it the old "<device> <key>" name stays."""
+        mock_device.coordinator = mock_coordinator
+        entity = CatlinkSensorEntity("litter_level", mock_device, {})
+
+        assert entity.has_entity_name is False
+        assert entity._attr_name == "Test Litter Box litter_level"
+
+
 class TestCatlinkNumberEntity:
     """Tests for CatlinkNumberEntity."""
 

@@ -22,8 +22,15 @@ class CatlinkEntity(CoordinatorEntity):
         self._name = name
         self._device = device
         self._option = option or {}
-        display_name = self._option.get("name", name)
-        self._attr_name = f"{device.name} {display_name}".strip()
+        translation_key = self._option.get("translation_key")
+        if translation_key:
+            # Opt-in: HA names the entity "<device name> <translated name>" and
+            # can translate its states and pick icons (translations/, icons.json).
+            self._attr_has_entity_name = True
+            self._attr_translation_key = translation_key
+        else:
+            display_name = self._option.get("name", name)
+            self._attr_name = f"{device.name} {display_name}".strip()
         self._attr_device_id = f"{device.type}_{device.mac}"
         self._attr_unique_id = f"{self._attr_device_id}-{name}"
         mac = device.mac[-4:] if device.mac else device.id

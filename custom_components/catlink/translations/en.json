@@ -1,0 +1,42 @@
+{
+  "config": {
+    "abort": {
+      "already_configured": "This account is already configured.",
+      "reauth_successful": "Re-authentication successful."
+    },
+    "error": {
+      "cannot_connect": "Cannot connect to CatLink servers. Please check your internet connection and try again.",
+      "invalid_auth": "Authentication failed. Please check your credentials and try again."
+    },
+    "step": {
+      "user": {
+        "description": "You must use a different account than the one on the mobile app. Use the share feature in the app to create a dedicated account for Home Assistant, because only one instance can be logged in per account at a time. Enter your full phone number with country code (e.g. +447911123456).",
+        "data": {
+          "phone": "Phone number",
+          "password": "Password"
+        },
+        "title": "Connect to CatLink"
+      },
+      "discovery": {
+        "description": "Found {total_count} device(s): {supported_count} fully supported, {unsupported_count} with limited support. Select which devices to add. Supported devices are pre-selected for quick setup.",
+        "data": {
+          "device_ids": "Discovered Devices",
+          "update_interval": "Refresh interval"
+        },
+        "title": "Discover devices"
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "description": "Add or remove devices and configure the refresh interval. Changes take effect after reload.",
+        "data": {
+          "device_ids": "Discovered Devices",
+          "update_interval": "Refresh interval"
+        },
+        "title": "Manage devices"
+      }
+    }
+  }
+}
