@@ -6,7 +6,8 @@
   "issue_tracker": "https://github.com/hasscc/catlink/issues",
   "requirements": [
     "phonenumbers>=8.13.0",
-    "pydantic>=2.0"
+    "pydantic>=2.0",
+    "aiomqtt>=2.0"
   ],
   "codeowners": [
     "@milosljubenovic"
