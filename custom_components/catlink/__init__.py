@@ -15,6 +15,7 @@ from .const import (
 )
 from .modules.account import Account
 from .modules.devices_coordinator import DevicesCoordinator
+from .websocket_api import async_register as async_register_websocket_api
 
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
@@ -28,6 +29,7 @@ async def async_setup(hass: HomeAssistant, hass_config: dict) -> bool:
     hass.data[DOMAIN].setdefault("add_entities", {})
     hass.data[DOMAIN].setdefault("config", {})
     hass.data[DOMAIN].setdefault("entry_coordinators", {})
+    async_register_websocket_api(hass)
     return True
 
 
@@ -35,6 +37,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up CatLink from a config entry."""
     hass.data[DOMAIN].setdefault("config", {})
     hass.data[DOMAIN]["config"].setdefault(CONF_DEVICES, [])
+
+    # YAML setups go through async_setup, config entries may not, so the live
+    # talk commands are registered here too (the registration is idempotent).
+    async_register_websocket_api(hass)
 
     config = {**entry.data, **(entry.options or {})}
     acc = Account(hass, config)
