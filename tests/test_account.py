@@ -71,6 +71,17 @@ class TestAccountProperties:
         assert acc.token == ""
 
 
+class TestAccountClose:
+    """Tests for Account.close."""
+
+    def test_close_detaches_session(self, account, mock_http_session) -> None:
+        """close() detaches the HA session (its close() is a warning-only stub)."""
+        account.close()
+
+        mock_http_session.detach.assert_called_once_with()
+        mock_http_session.close.assert_not_called()
+
+
 class TestAccountGetConfig:
     """Tests for Account get_config."""
 

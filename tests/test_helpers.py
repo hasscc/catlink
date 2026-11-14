@@ -127,6 +127,7 @@ class TestDiscoverRegion:
 
             assert result == "global"
             mock_account.async_login.assert_called_once()
+            mock_account.close.assert_called_once_with()
 
     @pytest.mark.usefixtures("enable_custom_integrations")
     async def test_discover_region_returns_none_when_all_fail(self, hass) -> None:

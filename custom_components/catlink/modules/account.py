@@ -42,6 +42,14 @@ class Account:
         self.hass = hass
         self.http = aiohttp_client.async_create_clientsession(hass, auto_cleanup=False)
 
+    def close(self) -> None:
+        """Release the HTTP session.
+
+        It is created with auto_cleanup=False; HA sessions share a connector,
+        so detach() is the documented way (close() is replaced by a warning).
+        """
+        self.http.detach()
+
     def get_config(self, key, default=None) -> str:
         """Return the config of the account."""
         val = self._config.get(key)

@@ -126,6 +126,7 @@ async def test_async_unload_entry(
     assert mock_config_entry.state is ConfigEntryState.NOT_LOADED
     assert "86-13812345678" not in hass.data[DOMAIN][CONF_ACCOUNTS]
     assert mock_config_entry.entry_id not in hass.data[DOMAIN]["entry_coordinators"]
+    mock_account.return_value.close.assert_called_once_with()
 
 
 @pytest.mark.usefixtures("enable_custom_integrations")

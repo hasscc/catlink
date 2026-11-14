@@ -84,8 +84,11 @@ async def discover_region(
             CONF_PASSWORD: password,
         }
         account = Account(hass, config)
-        if await account.async_login():
-            return region
+        try:
+            if await account.async_login():
+                return region
+        finally:
+            account.close()
     return None
 
 

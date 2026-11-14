@@ -65,7 +65,9 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             del devices[did]
 
     uid = f"{entry.data.get('phone_iac', '86')}-{entry.data.get('phone', '')}"
-    hass.data[DOMAIN][CONF_ACCOUNTS].pop(uid, None)
+    acc = hass.data[DOMAIN][CONF_ACCOUNTS].pop(uid, None)
+    if acc is not None:
+        acc.close()
     coordinator_name = f"{DOMAIN}-{uid}-{CONF_DEVICES}"
     if coordinator_name in hass.data[DOMAIN]["coordinators"]:
         del hass.data[DOMAIN]["coordinators"][coordinator_name]
