@@ -1,6 +1,6 @@
 """Number entities for CatLink integration."""
 
-from homeassistant.components.number import NumberEntity, NumberMode
+from homeassistant.components.number import ENTITY_ID_FORMAT, NumberEntity, NumberMode
 
 from ..devices.base import Device
 from .base import CatlinkEntity
@@ -8,6 +8,8 @@ from .base import CatlinkEntity
 
 class CatlinkNumberEntity(CatlinkEntity, NumberEntity):
     """Number entity for CatLink."""
+
+    _entity_id_format = ENTITY_ID_FORMAT
 
     def __init__(self, name, device: Device, option=None) -> None:
         """Initialize the entity."""

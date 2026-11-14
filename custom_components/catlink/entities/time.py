@@ -2,7 +2,7 @@
 
 from datetime import time
 
-from homeassistant.components.time import TimeEntity
+from homeassistant.components.time import ENTITY_ID_FORMAT, TimeEntity
 
 from ..devices.base import Device
 from .base import CatlinkEntity
@@ -15,6 +15,8 @@ class CatlinkTimeEntity(CatlinkEntity, TimeEntity):
     datetime.time or None). Changes go through the "async_set_value"
     option, as on numbers; without it the entity is read-only.
     """
+
+    _entity_id_format = ENTITY_ID_FORMAT
 
     def __init__(self, name, device: Device, option=None) -> None:
         """Initialize the entity."""

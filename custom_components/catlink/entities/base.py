@@ -14,6 +14,10 @@ from ..devices.base import Device
 class CatlinkEntity(CoordinatorEntity):
     """CatlinkEntity."""
 
+    # Each platform's "<platform>.{}" format, set by the concrete classes.
+    # An entity id must use its own platform's domain, not the integration's.
+    _entity_id_format = f"{DOMAIN}.{{}}"
+
     def __init__(self, name, device: Device, option=None) -> None:
         """Initialize the entity."""
         self.coordinator = device.coordinator
@@ -35,7 +39,7 @@ class CatlinkEntity(CoordinatorEntity):
         self._attr_unique_id = f"{self._attr_device_id}-{name}"
         mac = device.mac[-4:] if device.mac else device.id
         object_id = f"{device.type}_{mac}_{name}"
-        self.entity_id = f"{DOMAIN}.{slugify(object_id)}"
+        self.entity_id = self._entity_id_format.format(slugify(object_id))
         self._attr_icon = self._option.get("icon")
         self._attr_device_class = self._option.get("class")
         self._attr_native_unit_of_measurement = self._option.get("unit")

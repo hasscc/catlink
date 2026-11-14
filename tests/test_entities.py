@@ -11,11 +11,14 @@ from custom_components.catlink.entities.number import CatlinkNumberEntity
 from custom_components.catlink.entities.select import CatlinkSelectEntity
 from custom_components.catlink.entities.sensor import CatlinkSensorEntity
 from custom_components.catlink.entities.switch import CatlinkSwitchEntity
+from custom_components.catlink.entities.registry import DOMAIN_ENTITY_CLASSES
 from custom_components.catlink.entities.time import CatlinkTimeEntity
 from datetime import time
 
 import pytest
+from pytest_homeassistant_custom_component.common import MockEntityPlatform
 
+from custom_components.catlink.const import DOMAIN
 from homeassistant.components.number import NumberMode
 from homeassistant.const import STATE_OFF, STATE_ON
 
@@ -618,3 +621,49 @@ class TestCatlinkTimeEntity:
 
         with pytest.raises(NotImplementedError):
             await entity.async_set_value(time(1, 0))
+
+
+class TestEntityIds:
+    """Entity ids use the entity's own platform domain, not "catlink"."""
+
+    @pytest.mark.parametrize(
+        ("entity_cls", "platform"),
+        [
+            (CatlinkSensorEntity, "sensor"),
+            (CatlinkBinarySensorEntity, "binary_sensor"),
+            (CatlinkSwitchEntity, "switch"),
+            (CatlinkSelectEntity, "select"),
+            (CatlinkButtonEntity, "button"),
+            (CatlinkNumberEntity, "number"),
+            (CatlinkTimeEntity, "time"),
+        ],
+    )
+    def test_object_id_keeps_its_platform(
+        self, mock_device, mock_coordinator, entity_cls, platform
+    ) -> None:
+        """The object id is unchanged; only the domain is the platform's."""
+        mock_device.coordinator = mock_coordinator
+
+        entity = entity_cls("litter_level", mock_device, {})
+
+        assert entity.entity_id == f"{platform}.litter_box_599_eeff_litter_level"
+
+    def test_every_platform_class_is_covered(self) -> None:
+        """No platform may fall back to the integration's domain."""
+        for platform, entity_cls in DOMAIN_ENTITY_CLASSES.items():
+            assert entity_cls._entity_id_format == f"{platform}.{{}}"
+
+    async def test_adding_an_entity_keeps_its_id(
+        self, hass, mock_device, mock_coordinator, caplog
+    ) -> None:
+        """Added through a platform, the entity keeps that exact id."""
+        mock_device.coordinator = mock_coordinator
+        entity = CatlinkSensorEntity("litter_level", mock_device, {})
+        platform = MockEntityPlatform(hass, domain="sensor", platform_name=DOMAIN)
+
+        await platform.async_add_entities([entity])
+        await hass.async_block_till_done()
+
+        assert entity.entity_id == "sensor.litter_box_599_eeff_litter_level"
+        assert hass.states.get(entity.entity_id) is not None
+        assert "entity ID" not in caplog.text

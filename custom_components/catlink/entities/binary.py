@@ -1,6 +1,6 @@
 """Binary entities for CatLink integration."""
 
-from homeassistant.components.binary_sensor import BinarySensorEntity
+from homeassistant.components.binary_sensor import ENTITY_ID_FORMAT, BinarySensorEntity
 from homeassistant.const import STATE_OFF, STATE_ON
 
 from ..devices.base import Device
@@ -34,3 +34,5 @@ class CatlinkBinaryEntity(CatlinkEntity):
 
 class CatlinkBinarySensorEntity(CatlinkBinaryEntity, BinarySensorEntity):
     """Binary sensor entity for CatLink."""
+
+    _entity_id_format = ENTITY_ID_FORMAT
