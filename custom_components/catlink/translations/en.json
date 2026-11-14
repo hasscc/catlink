@@ -38,5 +38,225 @@
         "title": "Manage devices"
       }
     }
+  },
+  "entity": {
+    "sensor": {
+      "state": {
+        "name": "Status",
+        "state": {
+          "idle": "Idle",
+          "cleaning": "Cleaning",
+          "emptying": "Emptying litter",
+          "leveling": "Leveling litter",
+          "paused": "Paused",
+          "cancelling": "Cancelling",
+          "running": "Running"
+        }
+      },
+      "litter_level": {
+        "name": "Litter level"
+      },
+      "waste_bin": {
+        "name": "Waste bin",
+        "state": {
+          "empty": "Empty",
+          "half_full": "Half full",
+          "full": "Full"
+        }
+      },
+      "fault": {
+        "name": "Fault",
+        "state": {
+          "none": "None",
+          "anti_pinch": "Anti-pinch",
+          "cat_inside": "Cat inside",
+          "motor_blocked": "Motor blocked",
+          "weight_protection": "Weight protection"
+        }
+      },
+      "last_log": {
+        "name": "Last activity"
+      },
+      "litter_remaining_days": {
+        "name": "Litter days left"
+      },
+      "deodorant_countdown": {
+        "name": "Deodorant days left"
+      },
+      "total_clean_time": {
+        "name": "Cleans today"
+      },
+      "visits_today": {
+        "name": "Visits today"
+      },
+      "last_visit": {
+        "name": "Last visit",
+        "state": {
+          "unrecognized": "Unrecognized cat"
+        }
+      },
+      "last_visit_weight": {
+        "name": "Last visit weight"
+      },
+      "last_visit_duration": {
+        "name": "Last visit duration"
+      },
+      "wifi_signal": {
+        "name": "Wi-Fi signal"
+      },
+      "wifi_rssi": {
+        "name": "Wi-Fi RSSI"
+      },
+      "wifi_band": {
+        "name": "Wi-Fi band"
+      },
+      "firmware_version": {
+        "name": "Firmware version"
+      },
+      "scale_weight": {
+        "name": "Scale weight"
+      }
+    },
+    "binary_sensor": {
+      "online": {
+        "name": "Online"
+      },
+      "waste_bin_installed": {
+        "name": "Waste bin installed",
+        "state": {
+          "on": "Installed",
+          "off": "Removed"
+        }
+      },
+      "cat_inside": {
+        "name": "Cat inside"
+      }
+    },
+    "switch": {
+      "key_beep": {
+        "name": "Key beep"
+      },
+      "child_lock": {
+        "name": "Child lock"
+      },
+      "continuous_clean": {
+        "name": "Continuous clean"
+      },
+      "soft_stool_mode": {
+        "name": "Soft-stool mode"
+      },
+      "voice_announcements": {
+        "name": "Voice announcements"
+      },
+      "microphone": {
+        "name": "Microphone"
+      },
+      "video_watermark": {
+        "name": "Video watermark"
+      },
+      "camera_sleep": {
+        "name": "Camera sleep"
+      },
+      "do_not_disturb": {
+        "name": "Do not disturb"
+      },
+      "indicator_light": {
+        "name": "Indicator light"
+      }
+    },
+    "number": {
+      "clean_delay": {
+        "name": "Clean delay"
+      },
+      "leveling_level": {
+        "name": "Leveling level"
+      },
+      "bin_full_sensitivity": {
+        "name": "Bin-full sensitivity"
+      }
+    },
+    "select": {
+      "mode": {
+        "name": "Cleaning mode",
+        "state": {
+          "auto": "Automatic",
+          "manual": "Manual",
+          "scheduled": "Scheduled"
+        }
+      },
+      "camera_schedule": {
+        "name": "Recording period",
+        "state": {
+          "all_day": "All day",
+          "off": "Off",
+          "daytime": "Daytime",
+          "night": "Night (20:00-08:00)",
+          "custom": "Custom"
+        }
+      },
+      "fill_light": {
+        "name": "Fill light",
+        "state": {
+          "on": "Always on",
+          "when_dark": "When dark",
+          "cat_visit": "While a cat visits",
+          "off": "Off"
+        }
+      },
+      "video_quality": {
+        "name": "Video quality",
+        "state": {
+          "1080p": "1080p",
+          "720p": "720p"
+        }
+      }
+    },
+    "button": {
+      "clean": {
+        "name": "Clean"
+      },
+      "empty_litter": {
+        "name": "Empty litter"
+      },
+      "level_litter": {
+        "name": "Level litter"
+      },
+      "pause": {
+        "name": "Pause"
+      },
+      "resume": {
+        "name": "Resume"
+      },
+      "cancel": {
+        "name": "Cancel"
+      },
+      "reset_litter": {
+        "name": "Reset litter counter"
+      },
+      "reset_deodorant": {
+        "name": "Reset deodorant counter"
+      },
+      "reboot": {
+        "name": "Restart"
+      }
+    },
+    "time": {
+      "do_not_disturb_start": {
+        "name": "Do not disturb start"
+      },
+      "do_not_disturb_end": {
+        "name": "Do not disturb end"
+      }
+    },
+    "camera": {
+      "camera": {
+        "name": "Camera"
+      }
+    },
+    "media_player": {
+      "speaker": {
+        "name": "Speaker"
+      }
+    }
   }
 }

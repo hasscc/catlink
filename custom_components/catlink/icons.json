@@ -1,0 +1,232 @@
+{
+  "entity": {
+    "sensor": {
+      "state": {
+        "default": "mdi:information-outline",
+        "state": {
+          "idle": "mdi:check-circle-outline",
+          "cleaning": "mdi:broom",
+          "emptying": "mdi:delete-empty",
+          "leveling": "mdi:waves",
+          "paused": "mdi:pause-circle-outline",
+          "cancelling": "mdi:stop-circle-outline"
+        }
+      },
+      "litter_level": {
+        "default": "mdi:grain"
+      },
+      "waste_bin": {
+        "default": "mdi:delete",
+        "state": {
+          "empty": "mdi:delete-outline",
+          "half_full": "mdi:delete",
+          "full": "mdi:delete-alert"
+        }
+      },
+      "fault": {
+        "default": "mdi:alert-circle-outline",
+        "state": {
+          "none": "mdi:check-circle-outline",
+          "cat_inside": "mdi:cat",
+          "anti_pinch": "mdi:hand-back-left-off",
+          "motor_blocked": "mdi:engine-off",
+          "weight_protection": "mdi:weight"
+        }
+      },
+      "last_log": {
+        "default": "mdi:history"
+      },
+      "litter_remaining_days": {
+        "default": "mdi:calendar-clock"
+      },
+      "deodorant_countdown": {
+        "default": "mdi:spray-bottle"
+      },
+      "total_clean_time": {
+        "default": "mdi:broom"
+      },
+      "visits_today": {
+        "default": "mdi:paw"
+      },
+      "last_visit": {
+        "default": "mdi:cat"
+      },
+      "last_visit_weight": {
+        "default": "mdi:scale-bathroom"
+      },
+      "last_visit_duration": {
+        "default": "mdi:timer-outline"
+      },
+      "wifi_signal": {
+        "default": "mdi:wifi"
+      },
+      "wifi_band": {
+        "default": "mdi:wifi-cog"
+      },
+      "firmware_version": {
+        "default": "mdi:chip"
+      },
+      "scale_weight": {
+        "default": "mdi:scale"
+      }
+    },
+    "binary_sensor": {
+      "waste_bin_installed": {
+        "default": "mdi:delete",
+        "state": {
+          "on": "mdi:delete",
+          "off": "mdi:delete-off"
+        }
+      },
+      "cat_inside": {
+        "default": "mdi:cat",
+        "state": {
+          "on": "mdi:cat",
+          "off": "mdi:paw-off"
+        }
+      }
+    },
+    "switch": {
+      "key_beep": {
+        "default": "mdi:volume-high",
+        "state": {
+          "off": "mdi:volume-off"
+        }
+      },
+      "child_lock": {
+        "default": "mdi:lock",
+        "state": {
+          "off": "mdi:lock-open-variant"
+        }
+      },
+      "continuous_clean": {
+        "default": "mdi:repeat",
+        "state": {
+          "off": "mdi:repeat-off"
+        }
+      },
+      "soft_stool_mode": {
+        "default": "mdi:emoticon-poop"
+      },
+      "voice_announcements": {
+        "default": "mdi:account-voice",
+        "state": {
+          "off": "mdi:account-voice-off"
+        }
+      },
+      "microphone": {
+        "default": "mdi:microphone",
+        "state": {
+          "off": "mdi:microphone-off"
+        }
+      },
+      "video_watermark": {
+        "default": "mdi:clock-outline"
+      },
+      "camera_sleep": {
+        "default": "mdi:cctv",
+        "state": {
+          "on": "mdi:cctv-off"
+        }
+      },
+      "do_not_disturb": {
+        "default": "mdi:minus-circle",
+        "state": {
+          "off": "mdi:minus-circle-off"
+        }
+      },
+      "indicator_light": {
+        "default": "mdi:led-on",
+        "state": {
+          "off": "mdi:led-off"
+        }
+      }
+    },
+    "number": {
+      "clean_delay": {
+        "default": "mdi:timer-sand"
+      },
+      "leveling_level": {
+        "default": "mdi:waves"
+      },
+      "bin_full_sensitivity": {
+        "default": "mdi:delete-alert"
+      }
+    },
+    "select": {
+      "mode": {
+        "default": "mdi:robot",
+        "state": {
+          "manual": "mdi:hand-back-right",
+          "scheduled": "mdi:calendar-clock"
+        }
+      },
+      "camera_schedule": {
+        "default": "mdi:video-outline",
+        "state": {
+          "all_day": "mdi:hours-24",
+          "off": "mdi:video-off",
+          "daytime": "mdi:weather-sunny",
+          "night": "mdi:weather-night",
+          "custom": "mdi:calendar-edit"
+        }
+      },
+      "fill_light": {
+        "default": "mdi:lightbulb",
+        "state": {
+          "on": "mdi:lightbulb-on",
+          "when_dark": "mdi:lightbulb-night",
+          "cat_visit": "mdi:cat",
+          "off": "mdi:lightbulb-off"
+        }
+      },
+      "video_quality": {
+        "default": "mdi:high-definition-box"
+      }
+    },
+    "button": {
+      "clean": {
+        "default": "mdi:broom"
+      },
+      "empty_litter": {
+        "default": "mdi:delete-empty"
+      },
+      "level_litter": {
+        "default": "mdi:waves"
+      },
+      "pause": {
+        "default": "mdi:pause"
+      },
+      "resume": {
+        "default": "mdi:play"
+      },
+      "cancel": {
+        "default": "mdi:stop"
+      },
+      "reset_litter": {
+        "default": "mdi:shaker-outline"
+      },
+      "reset_deodorant": {
+        "default": "mdi:spray-bottle"
+      }
+    },
+    "time": {
+      "do_not_disturb_start": {
+        "default": "mdi:clock-start"
+      },
+      "do_not_disturb_end": {
+        "default": "mdi:clock-end"
+      }
+    },
+    "camera": {
+      "camera": {
+        "default": "mdi:cctv"
+      }
+    },
+    "media_player": {
+      "speaker": {
+        "default": "mdi:speaker"
+      }
+    }
+  }
+}
