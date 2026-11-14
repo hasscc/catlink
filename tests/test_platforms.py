@@ -100,6 +100,7 @@ async def test_platforms_loaded(init_integration: MockConfigEntry) -> None:
             "number",
             "time",
             "camera",
+            "media_player",
         ]
 
 

@@ -74,6 +74,7 @@ SUPPORTED_DOMAINS = [
     "number",
     "time",
     "camera",
+    "media_player",
 ]
 
 ACCOUNT_SCHEMA = vol.Schema(

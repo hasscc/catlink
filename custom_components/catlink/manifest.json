@@ -14,7 +14,8 @@
   ],
   "config_flow": true,
   "dependencies": [
-    "ffmpeg"
+    "ffmpeg",
+    "media_source"
   ],
   "iot_class": "cloud_polling"
 }

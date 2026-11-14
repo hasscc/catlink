@@ -8,6 +8,7 @@ from custom_components.catlink.entities.base import CatlinkEntity
 from custom_components.catlink.entities.binary import CatlinkBinarySensorEntity
 from custom_components.catlink.entities.button import CatlinkButtonEntity
 from custom_components.catlink.entities.camera import CatlinkCameraEntity
+from custom_components.catlink.entities.media_player import CatlinkMediaPlayerEntity
 from custom_components.catlink.entities.number import CatlinkNumberEntity
 from custom_components.catlink.entities.select import CatlinkSelectEntity
 from custom_components.catlink.entities.sensor import CatlinkSensorEntity
@@ -638,6 +639,7 @@ class TestEntityIds:
             (CatlinkNumberEntity, "number"),
             (CatlinkTimeEntity, "time"),
             (CatlinkCameraEntity, "camera"),
+            (CatlinkMediaPlayerEntity, "media_player"),
         ],
     )
     def test_object_id_keeps_its_platform(
