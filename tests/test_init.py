@@ -1,6 +1,6 @@
 """Tests for CatLink integration setup."""
 
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 from custom_components.catlink import async_setup
 from custom_components.catlink.const import (
@@ -126,6 +126,35 @@ async def test_async_unload_entry(
     assert mock_config_entry.state is ConfigEntryState.NOT_LOADED
     assert "86-13812345678" not in hass.data[DOMAIN][CONF_ACCOUNTS]
     assert mock_config_entry.entry_id not in hass.data[DOMAIN]["entry_coordinators"]
+
+
+@pytest.mark.usefixtures("enable_custom_integrations")
+async def test_async_unload_entry_drops_its_devices(
+    hass: HomeAssistant,
+    mock_config_entry,
+    mock_account,
+    mock_coordinator,
+) -> None:
+    """Unload removes the entry's devices so a reload binds new ones to the new coordinator."""
+    hass.data.setdefault(DOMAIN, {})
+    hass.data[DOMAIN].setdefault(CONF_ACCOUNTS, {})
+    hass.data[DOMAIN].setdefault(CONF_DEVICES, {})
+    hass.data[DOMAIN].setdefault("coordinators", {})
+    hass.data[DOMAIN].setdefault("add_entities", {})
+    hass.data[DOMAIN].setdefault("config", {})
+    hass.data[DOMAIN].setdefault("entry_coordinators", {})
+
+    mock_config_entry.add_to_hass(hass)
+    await hass.config_entries.async_setup(mock_config_entry.entry_id)
+    await hass.async_block_till_done()
+    own = MagicMock(coordinator=mock_coordinator.return_value)
+    other = MagicMock(coordinator=MagicMock())
+    hass.data[DOMAIN][CONF_DEVICES].update({"own": own, "other": other})
+
+    await hass.config_entries.async_unload(mock_config_entry.entry_id)
+    await hass.async_block_till_done()
+
+    assert hass.data[DOMAIN][CONF_DEVICES] == {"other": other}
 
 
 @pytest.mark.usefixtures("enable_custom_integrations")

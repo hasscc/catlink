@@ -56,9 +56,16 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
     await hass.config_entries.async_unload_platforms(entry, SUPPORTED_DOMAINS)
 
+    # Drop this entry's devices: a reload must build new ones bound to the new
+    # coordinator, or its entities would listen to the old, shut-down one.
+    coordinator = hass.data[DOMAIN]["entry_coordinators"].get(entry.entry_id)
+    if coordinator is not None:
+        devices = hass.data[DOMAIN][CONF_DEVICES]
+        for did in [d for d, dvc in devices.items() if dvc.coordinator is coordinator]:
+            del devices[did]
+
     uid = f"{entry.data.get('phone_iac', '86')}-{entry.data.get('phone', '')}"
-    if uid in hass.data[DOMAIN][CONF_ACCOUNTS]:
-        del hass.data[DOMAIN][CONF_ACCOUNTS][uid]
+    hass.data[DOMAIN][CONF_ACCOUNTS].pop(uid, None)
     coordinator_name = f"{DOMAIN}-{uid}-{CONF_DEVICES}"
     if coordinator_name in hass.data[DOMAIN]["coordinators"]:
         del hass.data[DOMAIN]["coordinators"][coordinator_name]
