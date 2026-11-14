@@ -67,6 +67,7 @@ SUPPORTED_DOMAINS = [
     "select",
     "button",
     "number",
+    "time",
 ]
 
 ACCOUNT_SCHEMA = vol.Schema(

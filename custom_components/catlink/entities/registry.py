@@ -6,6 +6,7 @@ from .number import CatlinkNumberEntity
 from .select import CatlinkSelectEntity
 from .sensor import CatlinkSensorEntity
 from .switch import CatlinkSwitchEntity
+from .time import CatlinkTimeEntity
 
 DOMAIN_ENTITY_CLASSES: dict[str, type] = {
     "sensor": CatlinkSensorEntity,
@@ -14,4 +15,5 @@ DOMAIN_ENTITY_CLASSES: dict[str, type] = {
     "select": CatlinkSelectEntity,
     "button": CatlinkButtonEntity,
     "number": CatlinkNumberEntity,
+    "time": CatlinkTimeEntity,
 }

@@ -11,6 +11,9 @@ from custom_components.catlink.entities.number import CatlinkNumberEntity
 from custom_components.catlink.entities.select import CatlinkSelectEntity
 from custom_components.catlink.entities.sensor import CatlinkSensorEntity
 from custom_components.catlink.entities.switch import CatlinkSwitchEntity
+from custom_components.catlink.entities.time import CatlinkTimeEntity
+from datetime import time
+
 import pytest
 
 from homeassistant.components.number import NumberMode
@@ -536,3 +539,82 @@ class TestCatlinkNumberEntity:
 
         assert mock_device.portions == 2
         assert entity._attr_state == 2
+
+
+class TestCatlinkTimeEntity:
+    """Tests for CatlinkTimeEntity."""
+
+    def _entity(self, hass, mock_device, mock_coordinator, option):
+        mock_device.coordinator = mock_coordinator
+        entity = CatlinkTimeEntity("quiet_start", mock_device, option)
+        entity.coordinator = mock_coordinator
+        entity.hass = hass
+        entity.entity_id = "time.test_quiet_start"
+        return entity
+
+    def test_value_from_device(self, hass, mock_device, mock_coordinator) -> None:
+        """The device attribute becomes the value, formatted like HA's time entities."""
+        mock_device.quiet_start = time(23, 0)
+        entity = self._entity(hass, mock_device, mock_coordinator, {})
+
+        entity.update()
+
+        assert entity.native_value == time(23, 0)
+        assert entity.state == "23:00:00"
+
+    def test_unknown_value(self, hass, mock_device, mock_coordinator) -> None:
+        """None or a non-time value reads as unknown."""
+        mock_device.quiet_start = None
+        entity = self._entity(hass, mock_device, mock_coordinator, {})
+        entity.update()
+        assert entity.state is None
+
+        mock_device.quiet_start = "23:00"
+        entity.update()
+        assert entity.state is None
+
+    async def test_set_value_calls_option(
+        self, hass, mock_device, mock_coordinator
+    ) -> None:
+        """A new time goes through "async_set_value" and the state refreshes."""
+        mock_device.quiet_start = time(23, 0)
+
+        async def applied(value, **kwargs):
+            mock_device.quiet_start = value
+            return True
+
+        mock_set = AsyncMock(side_effect=applied)
+        entity = self._entity(
+            hass, mock_device, mock_coordinator, {"async_set_value": mock_set}
+        )
+        entity.async_write_ha_state = MagicMock()
+
+        await entity.async_set_value(time(22, 30))
+
+        mock_set.assert_awaited_once_with(time(22, 30), entity=entity)
+        assert entity.native_value == time(22, 30)
+
+    async def test_set_value_failure_keeps_state(
+        self, hass, mock_device, mock_coordinator
+    ) -> None:
+        """A failed write leaves the value alone."""
+        mock_device.quiet_start = time(23, 0)
+        entity = self._entity(
+            hass, mock_device, mock_coordinator,
+            {"async_set_value": AsyncMock(return_value=False)},
+        )
+        entity.update()
+
+        await entity.async_set_value(time(1, 0))
+
+        assert entity.native_value == time(23, 0)
+
+    async def test_read_only_without_option(
+        self, hass, mock_device, mock_coordinator
+    ) -> None:
+        """Without "async_set_value" the time can't be changed."""
+        mock_device.quiet_start = time(23, 0)
+        entity = self._entity(hass, mock_device, mock_coordinator, {})
+
+        with pytest.raises(NotImplementedError):
+            await entity.async_set_value(time(1, 0))
