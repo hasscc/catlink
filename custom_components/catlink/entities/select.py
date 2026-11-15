@@ -2,7 +2,7 @@
 
 from typing import TYPE_CHECKING
 
-from homeassistant.components.select import SelectEntity
+from homeassistant.components.select import ENTITY_ID_FORMAT, SelectEntity
 
 from .base import CatlinkEntity
 
@@ -12,6 +12,8 @@ if TYPE_CHECKING:
 
 class CatlinkSelectEntity(CatlinkEntity, SelectEntity):
     """Select entity for CatLink."""
+
+    _entity_id_format = ENTITY_ID_FORMAT
 
     def __init__(self, name, device: "Device", option=None) -> None:
         """Initialize the entity."""
