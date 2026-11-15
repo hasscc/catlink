@@ -6,6 +6,8 @@ from .sensor import CatlinkSensorEntity
 from .select import CatlinkSelectEntity
 from .switch import CatlinkSwitchEntity
 from .button import CatlinkButtonEntity
+from .camera import CatlinkCameraEntity
+from .media_player import CatlinkMediaPlayerEntity
 
 __all__ = [
     "CatlinkEntity",
@@ -15,4 +17,6 @@ __all__ = [
     "CatlinkSelectEntity",
     "CatlinkSwitchEntity",
     "CatlinkButtonEntity",
+    "CatlinkCameraEntity",
+    "CatlinkMediaPlayerEntity",
 ]

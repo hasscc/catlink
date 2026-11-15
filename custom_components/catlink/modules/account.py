@@ -31,6 +31,7 @@ from ..const import (
     SIGN_KEY,
 )
 from ..helpers import Helper
+from .linkvisual import LinkVisualClient
 
 
 class Account:
@@ -41,6 +42,25 @@ class Account:
         self._config = config
         self.hass = hass
         self.http = aiohttp_client.async_create_clientsession(hass, auto_cleanup=False)
+        self._linkvisual: LinkVisualClient | None = None
+
+    def close(self) -> None:
+        """Release the HTTP session.
+
+        It is created with auto_cleanup=False; HA sessions share a connector,
+        so detach() is the documented way (close() is replaced by a warning).
+        Also stops the LinkVisual client's push connection (Pro Ultra only).
+        """
+        if self._linkvisual is not None:
+            self._linkvisual.close()
+        self.http.detach()
+
+    @property
+    def linkvisual(self) -> LinkVisualClient:
+        """Return the LinkVisual (camera streaming) client for this account."""
+        if self._linkvisual is None:
+            self._linkvisual = LinkVisualClient(self)
+        return self._linkvisual
 
     def get_config(self, key, default=None) -> str:
         """Return the config of the account."""
@@ -93,6 +113,10 @@ class Account:
 
     async def request(self, api, pms=None, method="GET", **kwargs) -> dict:
         """Request the api."""
+        retried = kwargs.pop("_retried", False)
+        # Kept unsigned for the retry after a re-login; pms gets the token,
+        # nonce and signature added below.
+        original = (api, dict(pms or {}), method)
         method = method.upper()
         url = self.api_url(api)
         kws = {
@@ -125,11 +149,10 @@ class Account:
             _LOGGER.debug("API response %s %s: %s", method, api, result)
             
             # Handle token expiration (1002: Illegal token)
-            if result.get("returnCode") == 1002 and not kwargs.get("_retried"):
+            if result.get("returnCode") == 1002 and not retried:
                 _LOGGER.info("Token expired (1002), attempting re-login for %s", self.phone)
                 if await self.async_login():
-                    kwargs["_retried"] = True
-                    return await self.request(api, pms, method, **kwargs)
+                    return await self.request(*original, _retried=True, **kwargs)
             
             return result
         except (ClientConnectorError, TimeoutError) as exc:  # noqa: UP041

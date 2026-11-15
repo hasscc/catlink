@@ -3,6 +3,7 @@
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_DEVICES
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers import config_validation as cv
 
 from .const import (
@@ -14,6 +15,7 @@ from .const import (
 )
 from .modules.account import Account
 from .modules.devices_coordinator import DevicesCoordinator
+from .websocket_api import async_register as async_register_websocket_api
 
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
@@ -27,6 +29,7 @@ async def async_setup(hass: HomeAssistant, hass_config: dict) -> bool:
     hass.data[DOMAIN].setdefault("add_entities", {})
     hass.data[DOMAIN].setdefault("config", {})
     hass.data[DOMAIN].setdefault("entry_coordinators", {})
+    async_register_websocket_api(hass)
     return True
 
 
@@ -35,6 +38,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass.data[DOMAIN].setdefault("config", {})
     hass.data[DOMAIN]["config"].setdefault(CONF_DEVICES, [])
 
+    # YAML setups go through async_setup, config entries may not, so the live
+    # talk commands are registered here too (the registration is idempotent).
+    async_register_websocket_api(hass)
+
     config = {**entry.data, **(entry.options or {})}
     acc = Account(hass, config)
     device_ids = entry.options.get(CONF_DEVICE_IDS) if entry.options else None
@@ -42,6 +49,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     await acc.async_check_auth()
     await coordinator.async_refresh()
+    if not coordinator.last_update_success:
+        # Entities are created by the first successful update; without one
+        # nothing would ever poll again. Let HA retry the setup later.
+        acc.close()
+        raise ConfigEntryNotReady("Could not fetch CatLink devices")
 
     hass.data[DOMAIN][CONF_ACCOUNTS][acc.uid] = acc
     hass.data[DOMAIN]["coordinators"][coordinator.name] = coordinator
@@ -56,9 +68,18 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
     await hass.config_entries.async_unload_platforms(entry, SUPPORTED_DOMAINS)
 
+    # Drop this entry's devices: a reload must build new ones bound to the new
+    # coordinator, or its entities would listen to the old, shut-down one.
+    coordinator = hass.data[DOMAIN]["entry_coordinators"].get(entry.entry_id)
+    if coordinator is not None:
+        devices = hass.data[DOMAIN][CONF_DEVICES]
+        for did in [d for d, dvc in devices.items() if dvc.coordinator is coordinator]:
+            del devices[did]
+
     uid = f"{entry.data.get('phone_iac', '86')}-{entry.data.get('phone', '')}"
-    if uid in hass.data[DOMAIN][CONF_ACCOUNTS]:
-        del hass.data[DOMAIN][CONF_ACCOUNTS][uid]
+    acc = hass.data[DOMAIN][CONF_ACCOUNTS].pop(uid, None)
+    if acc is not None:
+        acc.close()
     coordinator_name = f"{DOMAIN}-{uid}-{CONF_DEVICES}"
     if coordinator_name in hass.data[DOMAIN]["coordinators"]:
         del hass.data[DOMAIN]["coordinators"][coordinator_name]

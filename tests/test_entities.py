@@ -7,11 +7,21 @@ from custom_components.catlink.devices.litterbox import LitterBox
 from custom_components.catlink.entities.base import CatlinkEntity
 from custom_components.catlink.entities.binary import CatlinkBinarySensorEntity
 from custom_components.catlink.entities.button import CatlinkButtonEntity
+from custom_components.catlink.entities.camera import CatlinkCameraEntity
+from custom_components.catlink.entities.media_player import CatlinkMediaPlayerEntity
+from custom_components.catlink.entities.number import CatlinkNumberEntity
 from custom_components.catlink.entities.select import CatlinkSelectEntity
 from custom_components.catlink.entities.sensor import CatlinkSensorEntity
 from custom_components.catlink.entities.switch import CatlinkSwitchEntity
-import pytest
+from custom_components.catlink.entities.registry import DOMAIN_ENTITY_CLASSES
+from custom_components.catlink.entities.time import CatlinkTimeEntity
+from datetime import time
 
+import pytest
+from pytest_homeassistant_custom_component.common import MockEntityPlatform
+
+from custom_components.catlink.const import DOMAIN
+from homeassistant.components.number import NumberMode
 from homeassistant.const import STATE_OFF, STATE_ON
 
 
@@ -55,6 +65,26 @@ def real_device(mock_coordinator):
 
 class TestCatlinkEntity:
     """Tests for CatlinkEntity base class."""
+
+    @pytest.mark.parametrize(
+        ("option", "coordinator_ok", "expected"),
+        [
+            ({}, True, True),
+            ({}, False, False),
+            ({"available": lambda: True}, True, True),
+            ({"available": lambda: False}, True, False),
+            ({"available": lambda: True}, False, False),
+        ],
+    )
+    def test_available_option(
+        self, mock_device, mock_coordinator, option, coordinator_ok, expected
+    ) -> None:
+        """The "available" option can only make an entity unavailable."""
+        mock_device.coordinator = mock_coordinator
+        mock_coordinator.last_update_success = coordinator_ok
+        entity = CatlinkEntity("error", mock_device, option)
+
+        assert entity.available is expected
 
     def test_entity_initialization(
         self, hass, mock_device, mock_coordinator
@@ -176,6 +206,21 @@ class TestCatlinkBinarySensorEntity:
         entity.update()
         assert entity._attr_is_on is True
         assert entity.state == STATE_ON
+
+    def test_binary_sensor_is_on_option_wins(
+        self, hass, mock_device, mock_coordinator
+    ) -> None:
+        """An "is_on" callable in the options takes precedence over the attribute."""
+        mock_device.coordinator = mock_coordinator
+        mock_device.occupied = True
+        entity = CatlinkBinarySensorEntity(
+            "occupied", mock_device, {"is_on": lambda: False}
+        )
+        entity.coordinator = mock_coordinator
+        entity.hass = hass
+
+        entity.update()
+        assert entity._attr_is_on is False
 
     def test_binary_sensor_update_off(
         self, hass, mock_device, mock_coordinator
@@ -401,3 +446,228 @@ class TestCatlinkSwitchEntity:
         await entity.async_turn_off()
         assert entity._attr_is_on is False
         mock_turn_off.assert_called_once()
+
+
+class TestTranslationKeyOption:
+    """Tests for the opt-in "translation_key" entity option."""
+
+    def test_translated_name(self, mock_device, mock_coordinator) -> None:
+        """With a translation key HA builds the name from the device and translations."""
+        mock_device.coordinator = mock_coordinator
+        entity = CatlinkSensorEntity("litter_level", mock_device, {"translation_key": "litter_level"})
+
+        assert entity.has_entity_name is True
+        assert entity.translation_key == "litter_level"
+        assert not hasattr(entity, "_attr_name") or entity._attr_name is None
+        assert entity.entity_id.endswith("_litter_level")
+
+    def test_plain_name_without_option(self, mock_device, mock_coordinator) -> None:
+        """Without it the old "<device> <key>" name stays."""
+        mock_device.coordinator = mock_coordinator
+        entity = CatlinkSensorEntity("litter_level", mock_device, {})
+
+        assert entity.has_entity_name is False
+        assert entity._attr_name == "Test Litter Box litter_level"
+
+
+class TestCatlinkNumberEntity:
+    """Tests for CatlinkNumberEntity."""
+
+    def _entity(self, hass, mock_device, mock_coordinator, option):
+        mock_device.coordinator = mock_coordinator
+        entity = CatlinkNumberEntity("portions", mock_device, option)
+        entity.coordinator = mock_coordinator
+        entity.hass = hass
+        return entity
+
+    def test_number_initialization(
+        self, hass, mock_device, mock_coordinator
+    ) -> None:
+        """Range, step and mode come from the option; mode defaults to auto."""
+        entity = self._entity(
+            hass, mock_device, mock_coordinator, {"min": 1, "max": 30, "step": 1}
+        )
+        assert entity._attr_native_min_value == 1
+        assert entity._attr_native_max_value == 30
+        assert entity._attr_native_step == 1
+        assert entity._attr_mode == NumberMode.AUTO
+
+        boxed = self._entity(
+            hass, mock_device, mock_coordinator, {"mode": NumberMode.BOX}
+        )
+        assert boxed._attr_mode == NumberMode.BOX
+
+    async def test_set_value_without_option_stores_on_device(
+        self, hass, mock_device, mock_coordinator
+    ) -> None:
+        """Without "async_set_value" the value is only stored on the device (feeder portions)."""
+        mock_device.portions = 1
+        entity = self._entity(hass, mock_device, mock_coordinator, {"min": 1, "max": 10})
+
+        await entity.async_set_native_value(3.0)
+
+        assert mock_device.portions == 3
+
+    async def test_set_value_calls_option(
+        self, hass, mock_device, mock_coordinator
+    ) -> None:
+        """With "async_set_value" the value goes through it and the state refreshes."""
+        mock_device.portions = 1
+        mock_set = AsyncMock(return_value=True)
+
+        def applied(value, **kwargs):
+            mock_device.portions = int(value)
+            return True
+
+        mock_set.side_effect = applied
+        entity = self._entity(
+            hass, mock_device, mock_coordinator, {"async_set_value": mock_set}
+        )
+
+        await entity.async_set_native_value(5.0)
+
+        mock_set.assert_awaited_once_with(5.0, entity=entity)
+        assert entity._attr_state == 5
+
+    async def test_set_value_failure_keeps_state(
+        self, hass, mock_device, mock_coordinator
+    ) -> None:
+        """A failed write leaves the device value and entity state alone."""
+        mock_device.portions = 2
+        mock_set = AsyncMock(return_value=False)
+        entity = self._entity(
+            hass, mock_device, mock_coordinator, {"async_set_value": mock_set}
+        )
+        entity.update()
+
+        await entity.async_set_native_value(7.0)
+
+        assert mock_device.portions == 2
+        assert entity._attr_state == 2
+
+
+class TestCatlinkTimeEntity:
+    """Tests for CatlinkTimeEntity."""
+
+    def _entity(self, hass, mock_device, mock_coordinator, option):
+        mock_device.coordinator = mock_coordinator
+        entity = CatlinkTimeEntity("quiet_start", mock_device, option)
+        entity.coordinator = mock_coordinator
+        entity.hass = hass
+        entity.entity_id = "time.test_quiet_start"
+        return entity
+
+    def test_value_from_device(self, hass, mock_device, mock_coordinator) -> None:
+        """The device attribute becomes the value, formatted like HA's time entities."""
+        mock_device.quiet_start = time(23, 0)
+        entity = self._entity(hass, mock_device, mock_coordinator, {})
+
+        entity.update()
+
+        assert entity.native_value == time(23, 0)
+        assert entity.state == "23:00:00"
+
+    def test_unknown_value(self, hass, mock_device, mock_coordinator) -> None:
+        """None or a non-time value reads as unknown."""
+        mock_device.quiet_start = None
+        entity = self._entity(hass, mock_device, mock_coordinator, {})
+        entity.update()
+        assert entity.state is None
+
+        mock_device.quiet_start = "23:00"
+        entity.update()
+        assert entity.state is None
+
+    async def test_set_value_calls_option(
+        self, hass, mock_device, mock_coordinator
+    ) -> None:
+        """A new time goes through "async_set_value" and the state refreshes."""
+        mock_device.quiet_start = time(23, 0)
+
+        async def applied(value, **kwargs):
+            mock_device.quiet_start = value
+            return True
+
+        mock_set = AsyncMock(side_effect=applied)
+        entity = self._entity(
+            hass, mock_device, mock_coordinator, {"async_set_value": mock_set}
+        )
+        entity.async_write_ha_state = MagicMock()
+
+        await entity.async_set_value(time(22, 30))
+
+        mock_set.assert_awaited_once_with(time(22, 30), entity=entity)
+        assert entity.native_value == time(22, 30)
+
+    async def test_set_value_failure_keeps_state(
+        self, hass, mock_device, mock_coordinator
+    ) -> None:
+        """A failed write leaves the value alone."""
+        mock_device.quiet_start = time(23, 0)
+        entity = self._entity(
+            hass, mock_device, mock_coordinator,
+            {"async_set_value": AsyncMock(return_value=False)},
+        )
+        entity.update()
+
+        await entity.async_set_value(time(1, 0))
+
+        assert entity.native_value == time(23, 0)
+
+    async def test_read_only_without_option(
+        self, hass, mock_device, mock_coordinator
+    ) -> None:
+        """Without "async_set_value" the time can't be changed."""
+        mock_device.quiet_start = time(23, 0)
+        entity = self._entity(hass, mock_device, mock_coordinator, {})
+
+        with pytest.raises(NotImplementedError):
+            await entity.async_set_value(time(1, 0))
+
+
+class TestEntityIds:
+    """Entity ids use the entity's own platform domain, not "catlink"."""
+
+    @pytest.mark.parametrize(
+        ("entity_cls", "platform"),
+        [
+            (CatlinkSensorEntity, "sensor"),
+            (CatlinkBinarySensorEntity, "binary_sensor"),
+            (CatlinkSwitchEntity, "switch"),
+            (CatlinkSelectEntity, "select"),
+            (CatlinkButtonEntity, "button"),
+            (CatlinkNumberEntity, "number"),
+            (CatlinkTimeEntity, "time"),
+            (CatlinkCameraEntity, "camera"),
+            (CatlinkMediaPlayerEntity, "media_player"),
+        ],
+    )
+    def test_object_id_keeps_its_platform(
+        self, mock_device, mock_coordinator, entity_cls, platform
+    ) -> None:
+        """The object id is unchanged; only the domain is the platform's."""
+        mock_device.coordinator = mock_coordinator
+
+        entity = entity_cls("litter_level", mock_device, {})
+
+        assert entity.entity_id == f"{platform}.litter_box_599_eeff_litter_level"
+
+    def test_every_platform_class_is_covered(self) -> None:
+        """No platform may fall back to the integration's domain."""
+        for platform, entity_cls in DOMAIN_ENTITY_CLASSES.items():
+            assert entity_cls._entity_id_format == f"{platform}.{{}}"
+
+    async def test_adding_an_entity_keeps_its_id(
+        self, hass, mock_device, mock_coordinator, caplog
+    ) -> None:
+        """Added through a platform, the entity keeps that exact id."""
+        mock_device.coordinator = mock_coordinator
+        entity = CatlinkSensorEntity("litter_level", mock_device, {})
+        platform = MockEntityPlatform(hass, domain="sensor", platform_name=DOMAIN)
+
+        await platform.async_add_entities([entity])
+        await hass.async_block_till_done()
+
+        assert entity.entity_id == "sensor.litter_box_599_eeff_litter_level"
+        assert hass.states.get(entity.entity_id) is not None
+        assert "entity ID" not in caplog.text

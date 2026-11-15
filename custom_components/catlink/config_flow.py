@@ -100,7 +100,15 @@ class CatlinkConfigFlow(ConfigFlow, domain=DOMAIN):
                     CONF_PASSWORD: password,
                 }
                 account = Account(self.hass, config)
-                await account.async_check_auth()
+                try:
+                    await account.async_check_auth()
+                    devices = (
+                        None
+                        if self.source == SOURCE_REAUTH
+                        else await account.get_devices()
+                    )
+                finally:
+                    account.close()
 
                 self._account = account
                 self._config = config
@@ -110,7 +118,6 @@ class CatlinkConfigFlow(ConfigFlow, domain=DOMAIN):
                         self._get_reauth_entry(), data=self._config
                     )
 
-                devices = await account.get_devices()
                 if not devices:
                     return self.async_create_entry(
                         title=f"+{phone_iac}{phone_number}",
@@ -220,8 +227,11 @@ class CatlinkOptionsFlowHandler(OptionsFlowWithReload):
             self.hass,
             {**dict(self.config_entry.data), **dict(self.config_entry.options or {})},
         )
-        await account.async_check_auth()
-        devices = await account.get_devices() or []
+        try:
+            await account.async_check_auth()
+            devices = await account.get_devices() or []
+        finally:
+            account.close()
 
         device_options: dict[str, str] = {}
         supported_ids: list[str] = []
